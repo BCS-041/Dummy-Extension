@@ -1,7 +1,7 @@
 'use strict';
 (function () {
   const defaultIntervalInMin = '15';
-  let interval2 = '15'
+  let interval2 = '15';
   let refreshInterval;
   let activeDatasourceIdList = [];
   let uniqueDataSources = [];
@@ -10,9 +10,12 @@
   $(document).ready(function () {
     tableau.extensions.initializeAsync({ 'configure': configure }).then(function () {
       getSettings();
-      tableau.extensions.settings.addEventListener(tableau.TableauEventType.SettingsChanged, (settingsEvent) => {
-        updateExtensionBasedOnSettings(settingsEvent.newSettings)
-      });
+      tableau.extensions.settings.addEventListener(
+        tableau.TableauEventType.SettingsChanged,
+        (settingsEvent) => {
+          updateExtensionBasedOnSettings(settingsEvent.newSettings)
+        }
+      );
       if (tableau.extensions.settings.get("configured") != 1) {
         configure();
       }
@@ -37,19 +40,17 @@
   function configure() {
     const popupUrl = `${window.location.origin}/AutoRefreshDialog.html`;
 
-    tableau.extensions.ui.displayDialogAsync(popupUrl, defaultIntervalInMin, { height: 500, width: 500 }).then((closePayload) => {
-      $('#inactive').hide();
-      $('#active').show();
-      setupRefreshInterval(closePayload);
-    }).catch((error) => {
-      switch (error.errorCode) {
-        case tableau.ErrorCodes.DialogClosedByUser:
-          console.log("Dialog was closed by user");
-          break;
-        default:
+    tableau.extensions.ui.displayDialogAsync(popupUrl, defaultIntervalInMin, { height: 500, width: 500 })
+      .then((closePayload) => {
+        $('#inactive').hide();
+        $('#active').show();
+        setupRefreshInterval(closePayload);
+      })
+      .catch((error) => {
+        if (error.errorCode !== tableau.ErrorCodes.DialogClosedByUser) {
           console.error(error.message);
-      }
-    });
+        }
+      });
   }
 
   function setupRefreshInterval(interval) {
@@ -80,7 +81,7 @@
       }
       const refreshPromises = uniqueDataSources.map((datasource) => datasource.refreshAsync());
       Promise.all(refreshPromises).then(() => {
-        startCircularTimer(interval, refreshDataSources);
+        startTextTimer(interval, refreshDataSources);
       });
     }
 
@@ -89,49 +90,41 @@
     });
   }
 
-  // 🔹 Circular Timer Renderer
-  function startCircularTimer(seconds, onComplete) {
-    const canvas = document.getElementById("timerCanvas");
-    if (!canvas) return; // safety check
-    const ctx = canvas.getContext("2d");
+  // 🔹 Simple Responsive Timer (text only)
+  function startTextTimer(seconds, onComplete) {
+    const timerEl = document.getElementById("timerDisplay");
+    if (!timerEl) return;
+
     let start = Date.now();
 
-    function draw() {
+    function update() {
       const elapsed = Math.floor((Date.now() - start) / 1000);
       const remaining = Math.max(seconds - elapsed, 0);
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let displayTime;
+      if (seconds >= 60) {
+        const minutes = Math.ceil(remaining / 60);
+        displayTime = `${minutes} min`;
+      } else {
+        displayTime = `${remaining}s`;
+      }
 
-      // Circle background
-      ctx.beginPath();
-      ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2 - 5, 0, 2 * Math.PI);
-      ctx.strokeStyle = "#ddd";
-      ctx.lineWidth = 8;
-      ctx.stroke();
+      // Auto-scale font
+      let containerWidth = timerEl.parentElement.offsetWidth;
+      timerEl.style.fontSize = Math.max(containerWidth / 6, 20) + "px";
+      timerEl.style.fontWeight = "bold";
+      timerEl.style.color = "#2c3e50"; // professional dark gray/blue
 
-      // Progress arc
-      const progress = (remaining / seconds) * 2 * Math.PI;
-      ctx.beginPath();
-      ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2 - 5, -Math.PI / 2, -Math.PI / 2 + progress, false);
-      ctx.strokeStyle = "#007bff"; // professional blue
-      ctx.lineWidth = 8;
-      ctx.stroke();
-
-      // Timer text
-      ctx.fillStyle = "#333";
-      ctx.font = `${canvas.width / 4}px Arial`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(remaining, canvas.width / 2, canvas.height / 2);
+      timerEl.textContent = displayTime;
 
       if (remaining > 0) {
-        countdownTimer = requestAnimationFrame(draw);
+        countdownTimer = requestAnimationFrame(update);
       } else {
         if (onComplete) onComplete();
       }
     }
 
-    draw();
+    update();
   }
 
   function updateExtensionBasedOnSettings(settings) {
