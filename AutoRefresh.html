@@ -1,18 +1,17 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Smooth Continuous Timer</title>
+  <title>Tableau Dashboard Auto Refresh</title>
 
   <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 
   <style>
     body {
-      background: #eef2f7;
+      margin: 0;
+      background: #f4f6fa;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
       justify-content: center;
@@ -23,7 +22,7 @@
     .timer-wrapper {
       position: relative;
       width: 100%;
-      max-width: 200px;
+      max-width: 100%;
       aspect-ratio: 1 / 1;
     }
 
@@ -31,12 +30,11 @@
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      background: #f7f9fc;
+      background: #ffffff;
       border: 6px solid #0d6efd;
       display: flex;
       justify-content: center;
       align-items: center;
-      font-size: 2em;
       font-weight: bold;
       color: #0d6efd;
       box-shadow: 0 8px 20px rgba(0,0,0,0.1);
@@ -44,6 +42,9 @@
       top: 0;
       left: 0;
       z-index: 2;
+
+      /* Responsive font size */
+      font-size: clamp(18px, 5vw, 48px);
     }
 
     .progress-circle {
@@ -58,13 +59,13 @@
       transition: background 0.1s linear;
     }
 
-    #intervalInput, #startButton {
-      display: inline-block;
+    #controls {
       margin-top: 20px;
+      text-align: center;
     }
 
     #intervalInput {
-      width: 100px;
+      width: 120px;
       padding: 6px 10px;
       border-radius: 6px;
       border: 1px solid #cfd3d9;
@@ -73,8 +74,8 @@
     }
 
     #startButton {
-      margin-top: 15px;
-      padding: 8px 20px;
+      margin-left: 10px;
+      padding: 8px 18px;
       border: none;
       border-radius: 6px;
       background: linear-gradient(135deg, #0d6efd, #0056b3);
@@ -91,59 +92,56 @@
     .hidden {
       display: none !important;
     }
-
-    #timerContainer {
-      font-size: calc(1.5em + 1vw);
-    }
   </style>
 </head>
 <body>
 
-  <div class="text-center" style="width: 100%; max-width: 250px;">
+  <div class="text-center" style="width:100%; max-width:300px;">
     <div class="timer-wrapper">
       <div class="progress-circle" id="progressCircle"></div>
       <div id="timerContainer">00:00</div>
     </div>
 
-    <input type="number" id="intervalInput" min="5" max="3600" placeholder="Seconds">
-    <br>
-    <button id="startButton">Start</button>
+    <div id="controls">
+      <input type="number" id="intervalInput" min="5" max="3600" placeholder="Seconds">
+      <button id="startButton">Start</button>
+    </div>
   </div>
 
   <script>
-    let countdownInterval, progressAnimation;
+    let progressAnimation;
     const timerContainer = document.getElementById('timerContainer');
     const intervalInput = document.getElementById('intervalInput');
     const startButton = document.getElementById('startButton');
     const progressCircle = document.getElementById('progressCircle');
+    const controls = document.getElementById('controls');
 
     function startTimer(seconds) {
-      clearInterval(countdownInterval);
       cancelAnimationFrame(progressAnimation);
 
-      let remaining = seconds;
       let startTime = Date.now();
 
-      intervalInput.classList.add('hidden');
-      startButton.classList.add('hidden');
+      // Hide controls permanently after start
+      controls.classList.add('hidden');
 
       function updateTimer() {
         let now = Date.now();
         let elapsed = (now - startTime) / 1000;
         let rem = seconds - (elapsed % seconds);
+
         let min = Math.floor(rem / 60);
         let sec = Math.floor(rem % 60);
 
         timerContainer.textContent = `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
 
-        // Smooth progress animation
+        // Animate circular progress
         let progress = ((elapsed % seconds) / seconds) * 100;
         progressCircle.style.background = `conic-gradient(#0d6efd ${progress}%, #d0d7e0 ${progress}%)`;
 
         progressAnimation = requestAnimationFrame(updateTimer);
       }
 
-      updateTimer(); // start animation
+      updateTimer(); // start animation loop
     }
 
     startButton.addEventListener('click', () => {
