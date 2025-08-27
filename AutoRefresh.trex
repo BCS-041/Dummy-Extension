@@ -13,17 +13,17 @@
 
     <min-api-version>1.0</min-api-version>
 
-    <!-- 🔹 Main extension entry + configure dialog -->
+    <!-- Main extension file -->
     <source-location>
       <url>https://bcs-041.github.io/Dummy-Extension/AutoRefresh.html</url>
       <allow-dialog>true</allow-dialog>
       <dialog-url>https://bcs-041.github.io/Dummy-Extension/AutoRefreshDialog.html</dialog-url>
     </source-location>
 
-    <!-- 🔹 Use a hosted icon instead of base64 -->
-    <icon>https://bcs-041.github.io/Dummy-Extension/logo.png</icon>
+    <!-- Hosted icon (place icon.png in repo root) -->
+    <icon>https://bcs-041.github.io/Dummy-Extension/icon.png</icon>
 
-    <!-- 🔹 Keep permissions minimal -->
+    <!-- Valid permissions -->
     <permissions>
       <permission>display-dialog</permission>
       <permission>settings</permission>
