@@ -6,11 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tableau Dashboard Auto Refresh</title>
 
-  <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
-
   <style>
     body {
       margin: 0;
+      padding: 0;
       background: #f4f6fa;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
@@ -22,8 +21,9 @@
     .timer-wrapper {
       position: relative;
       width: 100%;
-      max-width: 100%;
+      max-width: 250px;
       aspect-ratio: 1 / 1;
+      margin: auto;
     }
 
     #timerContainer {
@@ -37,14 +37,12 @@
       align-items: center;
       font-weight: bold;
       color: #0d6efd;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.1);
       position: absolute;
       top: 0;
       left: 0;
       z-index: 2;
-
-      /* Responsive font size */
-      font-size: clamp(18px, 5vw, 48px);
+      font-size: clamp(18px, 5vw, 42px);
     }
 
     .progress-circle {
@@ -60,7 +58,7 @@
     }
 
     #controls {
-      margin-top: 20px;
+      margin-top: 16px;
       text-align: center;
     }
 
@@ -75,7 +73,7 @@
 
     #startButton {
       margin-left: 10px;
-      padding: 8px 18px;
+      padding: 8px 16px;
       border: none;
       border-radius: 6px;
       background: linear-gradient(135deg, #0d6efd, #0056b3);
@@ -96,7 +94,7 @@
 </head>
 <body>
 
-  <div class="text-center" style="width:100%; max-width:300px;">
+  <div style="width:100%; max-width:300px;">
     <div class="timer-wrapper">
       <div class="progress-circle" id="progressCircle"></div>
       <div id="timerContainer">00:00</div>
@@ -118,38 +116,39 @@
 
     function startTimer(seconds) {
       cancelAnimationFrame(progressAnimation);
-
-      let startTime = Date.now();
+      const startTime = Date.now();
 
       // Hide controls permanently after start
       controls.classList.add('hidden');
 
       function updateTimer() {
-        let now = Date.now();
-        let elapsed = (now - startTime) / 1000;
-        let rem = seconds - (elapsed % seconds);
+        const now = Date.now();
+        const elapsed = (now - startTime) / 1000;
+        const rem = seconds - (elapsed % seconds);
 
-        let min = Math.floor(rem / 60);
-        let sec = Math.floor(rem % 60);
+        const min = Math.floor(rem / 60);
+        const sec = Math.floor(rem % 60);
 
-        timerContainer.textContent = `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+        timerContainer.textContent =
+          `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
 
-        // Animate circular progress
-        let progress = ((elapsed % seconds) / seconds) * 100;
-        progressCircle.style.background = `conic-gradient(#0d6efd ${progress}%, #d0d7e0 ${progress}%)`;
+        // Progress circle animation
+        const progress = ((elapsed % seconds) / seconds) * 100;
+        progressCircle.style.background =
+          `conic-gradient(#0d6efd ${progress}%, #d0d7e0 ${progress}%)`;
 
         progressAnimation = requestAnimationFrame(updateTimer);
       }
 
-      updateTimer(); // start animation loop
+      updateTimer();
     }
 
     startButton.addEventListener('click', () => {
-      let interval = parseInt(intervalInput.value);
+      const interval = parseInt(intervalInput.value);
       if (!isNaN(interval) && interval >= 5) {
         startTimer(interval);
       } else {
-        alert('Please enter a valid interval (>=5 seconds)');
+        alert('Please enter a valid interval (>= 5 seconds)');
       }
     });
   </script>
