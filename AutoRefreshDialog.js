@@ -11,7 +11,7 @@
 
       let dashboard = tableau.extensions.dashboardContent.dashboard;
       let visibleDatasources = [];
-      if (tableau.extensions.settings.get('configured') === 1) {
+      if (tableau.extensions.settings.get('configured') == 1) {
         $('#interval').val(tableau.extensions.settings.get('intervalkey'));
       } else {
         $('#interval').val(60);
