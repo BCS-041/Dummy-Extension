@@ -2,62 +2,58 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Auto Refresh Extension</title>
+  <title>Tableau Dashboard Auto Refresh</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  
-  <!-- Bootstrap CSS -->
+
+  <!-- Bootstrap for styling -->
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-  
-  <!-- Tableau Extensions API -->
-  <script src="https://tableau.github.io/extensions-api/lib/tableau.extensions.1.latest.js"></script>
-  
+
   <!-- jQuery -->
   <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-  
+
+  <!-- Tableau Extensions API -->
+  <script src="https://tableau.github.io/extensions-api/lib/tableau.extensions.1.latest.js"></script>
+
+  <!-- Custom JS -->
+  <script src="AutoRefresh.js"></script>
+
   <style>
     body {
-      margin: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: #f9f9f9;
-    }
-    #inactive {
       text-align: center;
-      font-size: 18px;
-      color: #555;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      margin: 20px;
     }
-    #active {
-      display: none;
-      text-align: center;
-    }
+
     #timerDisplay {
-      font-size: 48px;
+      font-size: 3em;
       font-weight: bold;
-      color: #2c3e50;
+      color: #007bff;
+      margin-top: 20px;
+      word-wrap: break-word;
     }
-    button {
+
+    #inactive button {
       border-radius: 8px;
       padding: 10px 20px;
+      font-size: 16px;
+    }
+
+    #active {
+      display: none;
     }
   </style>
 </head>
 <body>
-  <!-- Initial message before configuration -->
-  <div id="inactive">
-    <p>Extension not configured yet.</p>
-    <button class="btn btn-primary" onclick="configure()">Configure</button>
-  </div>
+  <h3>Tableau Dashboard Auto Refresh</h3>
 
-  <!-- Active timer -->
+  <!-- Active (when running) -->
   <div id="active">
-    <p style="margin-bottom:10px; color:#007bff; font-size:16px;">Auto Refresh Timer</p>
-    <div id="timerDisplay">--</div>
+    <div id="timerDisplay">00</div>
   </div>
 
-  <!-- JS File -->
-  <script src="AutoRefresh.js"></script>
+  <!-- Inactive (before config) -->
+  <div id="inactive">
+    <button id="configureButton" class="btn btn-primary">Configure</button>
+  </div>
 </body>
 </html>
