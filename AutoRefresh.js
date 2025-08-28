@@ -47,7 +47,7 @@
     // 🔹 Use absolute GitHub Pages path to your dialog
     const popupUrl = "https://bcs-041.github.io/Dummy-Extension/AutoRefreshDialog.html";
 
-    tableau.extensions.ui.displayDialogAsync(popupUrl, '', { height: 520, width: 500 })
+    tableau.extensions.ui.displayDialogAsync(popupUrl, null, { height: 400, width: 400 })
       .then((closePayload) => {
         // closePayload contains the interval in seconds (we set it in dialog)
         // After dialog closed and settings saved, start based on settings
