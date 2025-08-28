@@ -1,87 +1,42 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Auto Refresh Settings</title>
-  <style>
-    body {
-      font-family: "Segoe UI", Roboto, Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background: #f4f6f9;
-    }
-    .card {
-      background: #fff;
-      padding: 24px 28px;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      width: 300px;
-      text-align: center;
-    }
-    h3 {
-      margin: 0 0 16px 0;
-      color: #0d6efd;
-      font-size: 18px;
-    }
-    label {
-      font-size: 14px;
-      color: #333;
-      display: block;
-      margin-bottom: 6px;
-    }
-    input[type="number"] {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #ccd1d9;
-      border-radius: 6px;
-      font-size: 14px;
-      text-align: center;
-    }
-    .buttons {
-      margin-top: 18px;
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    button {
-      flex: 1;
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    #saveBtn {
-      background: #0d6efd;
-      color: #fff;
-    }
-    #cancelBtn {
-      background: #e6e6e6;
-      color: #111;
-    }
-    #saveBtn:hover { background: #0b5ed7; }
-    #cancelBtn:hover { background: #d4d4d4; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h3>Auto Refresh Settings</h3>
-    <label for="intervalInput">Refresh Interval (seconds)</label>
-    <input id="intervalInput" type="number" min="1" step="1" value="30">
-
-    <div class="buttons">
-      <button id="cancelBtn">Cancel</button>
-      <button id="saveBtn">Save</button>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Settings Sample</title>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" >
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" ></script>
+    <script src="../../lib/tableau.extensions.1.latest.js"></script>
+    <script src="./AutoRefreshDialog.js"></script>
+  </head>
+  <body>
+    <div class="container">
+		<table style="margin-bottom:0px">
+		<tbody>
+		<tr>
+			<td style="vertical-align:middle;">
+				<img src="images.png" style="width: 30%; min-width: 150px;vertical-align: middle;">
+			</td>
+			<td style="text-align: right;vertical-align:middle;">
+				<img src="logo prosperitas.png" alt="Tableau" style="width: 28%; min-width: 120px;">
+			</td>
+		</tr>
+		</tbody>
+		</table>
+      <h4>Auto Data Source Refresh Extension</h4>
+      <p>
+        This Extension refreshes the selected datasources at the selected interval.
+      </p>
+      <hr />
+      <h5>Apply to these datasources: </h5>
+      <div style="margin-left: 14px" id="datasources">
+      </div>
+      <h5>Refresh interval in seconds:</h5>
+      <input style="margin-left: 14px" type="number" id="interval" name="quantity" min="15" max="3600">
+      <hr />
+      <button id="closeButton">Start Auto Refresh</button>
     </div>
-  </div>
-
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tableau-api@1.5.0/tableau.extensions.1.latest.js"></script>
-  <script src="AutoRefreshDialog.js"></script>
-</body>
+  </body>
 </html>
