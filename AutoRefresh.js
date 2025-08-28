@@ -1,34 +1,40 @@
 'use strict';
 (function () {
-  const KEY_CONFIGURED = 'configured';
+  // Settings keys
   const KEY_INTERVAL_SEC = 'intervalSeconds';
-  const KEY_SELECTED_DS = 'selectedDatasources';
+  const KEY_CONFIGURED = 'configured';
 
-  let activeDatasourceIdList = [];
-  let uniqueDataSources = [];
-  let countdownAnim = null;
-  let refreshTimeout = null;
+  // Runtime
   let currentIntervalSec = 30; // ✅ default 30 seconds
-
+  let countdownAnim = null;
   const canvas = document.getElementById('timerCanvas');
   const ctx = canvas ? canvas.getContext('2d') : null;
 
+  // Initialize extension
   $(document).ready(function () {
     tableau.extensions.initializeAsync({ configure }).then(() => {
+      alert("✅ Extension initialized");
+
+      // Listen for changes
       tableau.extensions.settings.addEventListener(
         tableau.TableauEventType.SettingsChanged,
         (event) => {
-          console.log("Settings changed → applying new settings");
+          console.log("⚡ Settings changed → applying new settings");
+          alert("Settings changed");
           applySettingsAndStart(event.newSettings);
         }
       );
 
       const configured = tableau.extensions.settings.get(KEY_CONFIGURED);
+      alert("Configured flag = " + configured);
+
       if (configured === '1') {
         console.log("Extension already configured → restoring settings");
+        alert("Restoring settings");
         applySettingsAndStart(tableau.extensions.settings.getAll());
       } else {
         console.log("Extension not yet configured → opening dialog");
+        alert("First-time use → opening dialog");
         configure();
       }
     }).catch(err => {
@@ -37,22 +43,22 @@
     });
   });
 
+  // Open configuration dialog
   function configure() {
     const popupUrl = "https://bcs-041.github.io/Dummy-Extension/AutoRefreshDialog.html";
+    console.log("Opening dialog:", popupUrl);
+    alert("Opening dialog: " + popupUrl);
 
-    console.log("Configure clicked, opening dialog at:", popupUrl);
-    alert("Configure clicked → Opening dialog:\n" + popupUrl);
-
-    tableau.extensions.ui.displayDialogAsync(popupUrl, null, { height: 400, width: 400 })
+    tableau.extensions.ui.displayDialogAsync(popupUrl, null, { height: 250, width: 300 })
       .then((closePayload) => {
         console.log("Dialog closed, payload:", closePayload);
-        alert("Dialog closed → Settings saved.");
+        alert("Dialog closed, payload = " + closePayload);
         applySettingsAndStart(tableau.extensions.settings.getAll());
       })
       .catch((err) => {
         if (err && err.errorCode === tableau.ErrorCodes.DialogClosedByUser) {
-          console.log("Dialog closed by user (cancelled).");
-          alert("Dialog closed by user (cancelled).");
+          console.log("Dialog closed by user");
+          alert("Dialog closed by user");
         } else {
           console.error("Dialog error", err);
           alert("Dialog error: " + JSON.stringify(err));
@@ -60,108 +66,31 @@
       });
   }
 
+  // Apply settings and start timer
   function applySettingsAndStart(settings) {
-    stopAllTimers();
-
-    if (settings[KEY_SELECTED_DS]) {
-      try {
-        activeDatasourceIdList = JSON.parse(settings[KEY_SELECTED_DS]);
-        if (!Array.isArray(activeDatasourceIdList)) activeDatasourceIdList = [];
-      } catch (e) {
-        activeDatasourceIdList = [];
-      }
-    } else {
-      activeDatasourceIdList = [];
-    }
+    stopTimer();
 
     if (settings[KEY_INTERVAL_SEC]) {
       const v = parseInt(settings[KEY_INTERVAL_SEC], 10);
       if (!isNaN(v) && v > 0) currentIntervalSec = v;
     }
 
-    console.log("Applying settings:", settings);
-    alert("Applying settings. Interval = " + currentIntervalSec + " sec");
+    console.log("⏱ Starting timer:", currentIntervalSec, "sec");
+    alert("⏱ Starting timer: " + currentIntervalSec + " sec");
 
-    collectUniqueDataSources().then(() => {
-      triggerRefreshCycle();
-    }).catch(err => {
-      console.error('Error collecting datasources', err);
-      alert("Error collecting datasources: " + JSON.stringify(err));
-    });
+    startCircularTimer(currentIntervalSec, () => applySettingsAndStart(settings));
   }
 
-  function collectUniqueDataSources() {
-    return new Promise((resolve, reject) => {
-      try {
-        const dashboard = tableau.extensions.dashboardContent.dashboard;
-        const uniqueIds = new Set();
-        uniqueDataSources = [];
-
-        const promises = dashboard.worksheets.map(ws => {
-          return ws.getDataSourcesAsync().then(dsList => {
-            dsList.forEach(ds => {
-              if (activeDatasourceIdList.length === 0 || activeDatasourceIdList.indexOf(ds.id) >= 0) {
-                if (!uniqueIds.has(ds.id)) {
-                  uniqueIds.add(ds.id);
-                  uniqueDataSources.push(ds);
-                }
-              }
-            });
-          });
-        });
-
-        Promise.all(promises).then(() => {
-          console.log("Collected datasources:", uniqueDataSources.map(d => d.name));
-          resolve();
-        }).catch(reject);
-      } catch (e) {
-        reject(e);
-      }
-    });
-  }
-
-  function triggerRefreshCycle() {
-    if (!uniqueDataSources || uniqueDataSources.length === 0) {
-      console.warn("No datasources to refresh");
-      startCircularTimer(currentIntervalSec, triggerRefreshCycle);
-      return;
-    }
-
-    console.log("Refreshing datasources...");
-    const refreshPromises = uniqueDataSources.map(ds => {
-      try {
-        return ds.refreshAsync().then(() => {
-          console.log(`Refresh queued: ${ds.name}`);
-          return { success: true, ds };
-        }).catch(err => ({ success: false, ds, err }));
-      } catch (e) {
-        return Promise.resolve({ success: false, ds, err: e });
-      }
-    });
-
-    Promise.all(refreshPromises).then(results => {
-      results.forEach(r => {
-        if (!r.success) console.warn(`Refresh failed: ${r.ds && r.ds.name}`, r.err);
-      });
-      startCircularTimer(currentIntervalSec, triggerRefreshCycle);
-    }).catch(err => {
-      console.error("Error in refresh cycle", err);
-      startCircularTimer(currentIntervalSec, triggerRefreshCycle);
-    });
-  }
-
-  function stopAllTimers() {
+  // Stop timer if running
+  function stopTimer() {
     if (countdownAnim) {
       cancelAnimationFrame(countdownAnim);
       countdownAnim = null;
     }
-    if (refreshTimeout) {
-      clearTimeout(refreshTimeout);
-      refreshTimeout = null;
-    }
     if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
+  // Circular timer
   function startCircularTimer(seconds, onComplete) {
     if (!ctx) return;
     seconds = Math.max(1, Math.floor(Number(seconds) || 1));
@@ -176,7 +105,7 @@
     function formatTime(sec) {
       const m = Math.floor(sec / 60);
       const s = sec % 60;
-      return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
     function drawFrame() {
@@ -185,38 +114,32 @@
 
       ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
-      const w = canvas.width / dpr;
-      const h = canvas.height / dpr;
-      const cx = w / 2;
-      const cy = h / 2;
+      const w = canvas.width / dpr, h = canvas.height / dpr;
+      const cx = w / 2, cy = h / 2;
       const radius = Math.min(w, h) / 2 - 6;
 
+      // background circle
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
-      ctx.strokeStyle = '#e6e9ee';
-      ctx.lineWidth = 8;
-      ctx.stroke();
+      ctx.strokeStyle = '#e6e9ee'; ctx.lineWidth = 8; ctx.stroke();
 
+      // progress arc
       const progressAngle = ((seconds - remaining) / seconds) * 2 * Math.PI;
       ctx.beginPath();
-      ctx.arc(cx, cy, radius, -Math.PI/2, -Math.PI/2 + progressAngle, false);
-      ctx.strokeStyle = '#0d6efd';
-      ctx.lineWidth = 8;
-      ctx.stroke();
+      ctx.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + progressAngle, false);
+      ctx.strokeStyle = '#0d6efd'; ctx.lineWidth = 8; ctx.stroke();
 
+      // time text
       ctx.fillStyle = '#222';
-      ctx.font = `${Math.floor(radius / 1.6)}px "Segoe UI", Arial`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.font = `${Math.floor(radius / 1.6)}px sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(formatTime(remaining), cx, cy);
 
       if (remaining > 0) {
         countdownAnim = requestAnimationFrame(drawFrame);
       } else {
         countdownAnim = null;
-        setTimeout(() => {
-          try { if (typeof onComplete === 'function') onComplete(); } catch(e) {}
-        }, 150);
+        setTimeout(() => { if (typeof onComplete === 'function') onComplete(); }, 150);
       }
     }
 
@@ -224,5 +147,6 @@
     drawFrame();
   }
 
+  // Expose configure globally (optional)
   window.AutoRefreshConfigure = configure;
 })();
