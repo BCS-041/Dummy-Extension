@@ -2,45 +2,84 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Auto Refresh Settings</title>
-
   <style>
-    body { font-family: "Segoe UI", Roboto, Arial, sans-serif; margin:18px; background:#f7f9fc; color:#222; }
-    h2 { margin:0 0 8px 0; color:#0d6efd; }
-    .row { display:flex; gap:12px; align-items:center; margin-top:10px; }
-    label { font-size:13px; }
-    input[type="number"] { width:100px; padding:6px; border-radius:6px; border:1px solid #d0d7e0; }
-    .datasources { margin-top:12px; max-height:260px; overflow:auto; background:#fff; border:1px solid #e2e6ea; border-radius:6px; padding:10px; }
-    .ds-item { padding:6px 4px; border-bottom:1px solid #f1f3f5; font-size:13px; }
-    .ds-item:last-child { border-bottom: none; }
-    .buttons { margin-top:14px; display:flex; justify-content:flex-end; gap:8px; }
-    button { padding:8px 12px; border-radius:6px; border:none; cursor:pointer; font-weight:600; }
-    #saveBtn { background:#0d6efd; color:#fff; }
-    #cancelBtn { background:#e6e6e6; color:#111; }
-    .small { font-size:12px; color:#666; margin-top:6px; }
+    body {
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: #f4f6f9;
+    }
+    .card {
+      background: #fff;
+      padding: 24px 28px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 300px;
+      text-align: center;
+    }
+    h3 {
+      margin: 0 0 16px 0;
+      color: #0d6efd;
+      font-size: 18px;
+    }
+    label {
+      font-size: 14px;
+      color: #333;
+      display: block;
+      margin-bottom: 6px;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccd1d9;
+      border-radius: 6px;
+      font-size: 14px;
+      text-align: center;
+    }
+    .buttons {
+      margin-top: 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #saveBtn {
+      background: #0d6efd;
+      color: #fff;
+    }
+    #cancelBtn {
+      background: #e6e6e6;
+      color: #111;
+    }
+    #saveBtn:hover { background: #0b5ed7; }
+    #cancelBtn:hover { background: #d4d4d4; }
   </style>
 </head>
 <body>
-  <h2>Auto Refresh Settings</h2>
-  <div class="small">Pick which datasources to refresh. Leave none selected to refresh all datasources used by the dashboard.</div>
+  <div class="card">
+    <h3>Auto Refresh Settings</h3>
+    <label for="intervalInput">Refresh Interval (seconds)</label>
+    <input id="intervalInput" type="number" min="1" step="1" value="30">
 
-  <div class="row">
-    <label for="intervalInput">Interval (seconds):</label>
-    <input id="intervalInput" type="number" min="1" step="1" placeholder="30">
+    <div class="buttons">
+      <button id="cancelBtn">Cancel</button>
+      <button id="saveBtn">Save</button>
+    </div>
   </div>
 
-  <div class="datasources" id="datasourceContainer">
-    <!-- populated dynamically -->
-  </div>
-
-  <div class="buttons">
-    <button id="cancelBtn">Cancel</button>
-    <button id="saveBtn">Save</button>
-  </div>
-
-  <!-- dependencies -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tableau-api@1.5.0/tableau.extensions.1.latest.js"></script>
   <script src="AutoRefreshDialog.js"></script>
