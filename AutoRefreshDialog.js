@@ -5,31 +5,31 @@
   const KEY_SELECTED_DS = 'selectedDatasources';
 
   $(document).ready(function () {
-    // initialize dialog
+    console.log("Dialog loading...");
+    alert("Dialog loading...");
+
     tableau.extensions.initializeDialogAsync().then(function (openPayload) {
-      // openPayload could be default value (not relied upon here)
+      console.log("Dialog initialized, payload:", openPayload);
+      alert("Dialog initialized.");
+
       const settings = tableau.extensions.settings.getAll();
 
-      // set interval input: prefer saved value, otherwise default 15 minutes
+      // Load existing seconds value or default 30
       if (settings[KEY_INTERVAL_SEC]) {
         const sec = parseInt(settings[KEY_INTERVAL_SEC], 10);
-        if (!isNaN(sec)) $('#intervalInput').val(Math.max(1, Math.round(sec / 60)));
+        if (!isNaN(sec)) $('#intervalInput').val(sec);
       } else if (openPayload && !isNaN(parseInt(openPayload,10))) {
-        // if caller passed payload minutes
         $('#intervalInput').val(openPayload);
       } else {
-        $('#intervalInput').val(15); // default minutes
+        $('#intervalInput').val(30); // ✅ default 30 sec
       }
 
-      // populate datasources list dynamically (unique across worksheets)
       const dashboard = tableau.extensions.dashboardContent.dashboard;
       const seen = new Set();
       const savedDS = settings[KEY_SELECTED_DS] ? JSON.parse(settings[KEY_SELECTED_DS]) : [];
 
-      // collect datasource objects from all worksheets
       const promises = dashboard.worksheets.map(ws => ws.getDataSourcesAsync());
       Promise.all(promises).then(allLists => {
-        // flatten and unique by id
         allLists.flat().forEach(ds => {
           if (!seen.has(ds.id)) {
             seen.add(ds.id);
@@ -45,54 +45,56 @@
           }
         });
 
-        // if no datasources found (rare), show message
         if (seen.size === 0) {
-          $('#datasourceContainer').append('<div class="ds-item">No datasources found in this dashboard.</div>');
+          $('#datasourceContainer').append('<div class="ds-item">No datasources found.</div>');
         }
       }).catch(err => {
-        console.error('Error fetching datasources', err);
-        $('#datasourceContainer').append('<div class="ds-item">Error loading datasources</div>');
+        console.error("Error fetching datasources", err);
+        alert("Error fetching datasources: " + JSON.stringify(err));
       });
 
     }).catch(err => {
-      console.error('Dialog init error', err);
+      console.error("Dialog init error", err);
+      alert("Dialog init error: " + JSON.stringify(err));
     });
 
-    // Save button
+    // Save
     $('#saveBtn').on('click', function () {
-      const minutes = parseInt($('#intervalInput').val(), 10);
-      if (isNaN(minutes) || minutes < 1) {
-        alert('Enter a valid interval (minutes, >= 1).');
+      console.log("Save button clicked");
+      alert("Save button clicked");
+
+      const seconds = parseInt($('#intervalInput').val(), 10);
+      if (isNaN(seconds) || seconds < 1) {
+        alert("Enter a valid interval (>=1 second)");
         return;
       }
-      const intervalSeconds = Math.round(minutes * 60);
 
-      // gather selected datasource ids (if any)
       const selected = [];
       $('.ds-checkbox:checked').each(function () {
         selected.push($(this).val());
       });
 
-      // save into Tableau settings
-      tableau.extensions.settings.set(KEY_INTERVAL_SEC, intervalSeconds.toString());
+      tableau.extensions.settings.set(KEY_INTERVAL_SEC, seconds.toString());
       tableau.extensions.settings.set(KEY_SELECTED_DS, JSON.stringify(selected));
       tableau.extensions.settings.set(KEY_CONFIGURED, '1');
 
       tableau.extensions.settings.saveAsync().then(() => {
-        // close and return interval (seconds) if caller wants it
-        tableau.extensions.ui.closeDialog(intervalSeconds);
+        console.log("Settings saved, closing dialog");
+        alert("Settings saved → Closing dialog.");
+        tableau.extensions.ui.closeDialog(seconds);
       }).catch(err => {
-        console.error('Settings save failed', err);
-        alert('Failed to save settings. See console for details.');
+        console.error("Settings save failed", err);
+        alert("Settings save failed: " + JSON.stringify(err));
       });
     });
 
-    // Cancel button
+    // Cancel
     $('#cancelBtn').on('click', function () {
+      console.log("Cancel clicked");
+      alert("Cancel clicked → Closing dialog");
       tableau.extensions.ui.closeDialog('');
     });
 
-    // small utility
     function escapeHtml(text) {
       if (!text) return '';
       return text.replace(/[&<>"'`=\/]/g, function (s) {
