@@ -8,20 +8,12 @@
   let uniqueDataSources = [];
   let countdownAnim = null;
   let refreshTimeout = null;
-  let currentIntervalSec = 30; // Default 30 seconds
-
-  let startTime = Date.now();
-  let refreshIntervalStart = Date.now();
+  let currentIntervalSec = 30; // default 30 seconds
 
   const canvas = document.getElementById('timerCanvas');
   const ctx = canvas ? canvas.getContext('2d') : null;
-  const dpr = window.devicePixelRatio || 1;
-  if (canvas) {
-    canvas.width = canvas.offsetWidth * dpr;
-    canvas.height = canvas.offsetHeight * dpr;
-  }
 
-  window.addEventListener('load', () => {
+  $(document).ready(function () {
     tableau.extensions.initializeAsync({ configure }).then(() => {
       tableau.extensions.settings.addEventListener(
         tableau.TableauEventType.SettingsChanged,
@@ -41,135 +33,197 @@
       }
     }).catch(err => {
       console.error('Initialize error', err);
+      alert("Initialize error: " + JSON.stringify(err));
     });
   });
 
   function configure() {
+    // THIS IS THE CRITICAL FIX: Use a relative path to the dialog file.
     const popupUrl = "AutoRefreshDialog.html";
-    console.log("Configure clicked, opening dialog");
 
-    tableau.extensions.ui.displayDialogAsync(popupUrl, '', { height: 500, width: 400 }).then((closePayload) => {
-      if (closePayload) {
-        console.log("Dialog closed with payload:", closePayload);
+    console.log("Configure clicked, opening dialog at:", popupUrl);
+    alert("Configure clicked → Opening dialog:\n" + popupUrl);
+
+    tableau.extensions.ui.displayDialogAsync(popupUrl, null, { height: 400, width: 400 })
+      .then((closePayload) => {
+        console.log("Dialog closed, payload:", closePayload);
+        alert("Dialog closed → Settings saved.");
+        applySettingsAndStart(tableau.extensions.settings.getAll());
+      })
+      .catch((err) => {
+        if (err && err.errorCode === tableau.ErrorCodes.DialogClosedByUser) {
+          console.log("Dialog closed by user (cancelled).");
+          alert("Dialog closed by user (cancelled).");
+        } else {
+          console.error("Dialog error", err);
+          alert("Dialog error: " + JSON.stringify(err));
+        }
+      });
+  }
+
+  function applySettingsAndStart(settings) {
+    stopAllTimers();
+
+    if (settings[KEY_SELECTED_DS]) {
+      try {
+        activeDatasourceIdList = JSON.parse(settings[KEY_SELECTED_DS]);
+        if (!Array.isArray(activeDatasourceIdList)) activeDatasourceIdList = [];
+      } catch (e) {
+        activeDatasourceIdList = [];
       }
+    } else {
+      activeDatasourceIdList = [];
+    }
+
+    if (settings[KEY_INTERVAL_SEC]) {
+      const v = parseInt(settings[KEY_INTERVAL_SEC], 10);
+      if (!isNaN(v) && v > 0) currentIntervalSec = v;
+    }
+
+    console.log("Applying settings:", settings);
+    alert("Applying settings. Interval = " + currentIntervalSec + " sec");
+
+    collectUniqueDataSources().then(() => {
+      triggerRefreshCycle();
     }).catch(err => {
-      console.error("Dialog error", err);
+      console.error('Error collecting datasources', err);
+      alert("Error collecting datasources: " + JSON.stringify(err));
     });
   }
 
-  function applySettingsAndStart(newSettings) {
-    const interval = parseInt(newSettings[KEY_INTERVAL_SEC], 10);
-    const selectedDS = newSettings[KEY_SELECTED_DS] ? JSON.parse(newSettings[KEY_SELECTED_DS]) : [];
-    
-    stopRefresh();
+  function collectUniqueDataSources() {
+    return new Promise((resolve, reject) => {
+      try {
+        const dashboard = tableau.extensions.dashboardContent.dashboard;
+        const uniqueIds = new Set();
+        uniqueDataSources = [];
 
-    if (!isNaN(interval) && interval > 0) {
-      currentIntervalSec = interval;
-      console.log("New interval set to", currentIntervalSec, "seconds");
-
-      startTime = Date.now();
-      refreshIntervalStart = Date.now();
-      
-      startRefreshTimeout(currentIntervalSec);
-      
-      const dashboard = tableau.extensions.dashboardContent.dashboard;
-      const promises = dashboard.worksheets.map(ws => ws.getDataSourcesAsync());
-      
-      Promise.all(promises).then(allLists => {
-        const datasources = allLists.flat();
-        uniqueDataSources = [...new Set(datasources.map(ds => ds.id))];
-        
-        if (selectedDS.length > 0) {
-          activeDatasourceIdList = datasources.filter(ds => selectedDS.includes(ds.id)).map(ds => ds.id);
-        } else {
-          activeDatasourceIdList = datasources.map(ds => ds.id);
-        }
-        
-        console.log("Datasources to refresh:", activeDatasourceIdList);
-      }).catch(err => {
-        console.error("Datasource fetch error", err);
-      });
-      
-    } else {
-      console.warn("Invalid interval received from settings.");
-    }
-  }
-
-  function startRefreshTimeout(interval) {
-    console.log("Starting refresh timeout for", interval, "seconds");
-    
-    drawFrame();
-
-    refreshTimeout = setTimeout(() => {
-      const dashboard = tableau.extensions.dashboardContent.dashboard;
-      const promises = activeDatasourceIdList.map(dsId => {
-        return dashboard.getDataSourceByIdAsync(dsId).then(dataSource => {
-          return dataSource.refreshAsync();
-        }).catch(err => {
-          console.error("Refresh failed for datasource", dsId, err);
+        const promises = dashboard.worksheets.map(ws => {
+          return ws.getDataSourcesAsync().then(dsList => {
+            dsList.forEach(ds => {
+              if (activeDatasourceIdList.length === 0 || activeDatasourceIdList.indexOf(ds.id) >= 0) {
+                if (!uniqueIds.has(ds.id)) {
+                  uniqueIds.add(ds.id);
+                  uniqueDataSources.push(ds);
+                }
+              }
+            });
+          });
         });
+
+        Promise.all(promises).then(() => {
+          console.log("Collected datasources:", uniqueDataSources.map(d => d.name));
+          resolve();
+        }).catch(reject);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  function triggerRefreshCycle() {
+    if (!uniqueDataSources || uniqueDataSources.length === 0) {
+      console.warn("No datasources to refresh");
+      startCircularTimer(currentIntervalSec, triggerRefreshCycle);
+      return;
+    }
+
+    console.log("Refreshing datasources...");
+    const refreshPromises = uniqueDataSources.map(ds => {
+      try {
+        return ds.refreshAsync().then(() => {
+          console.log(`Refresh queued: ${ds.name}`);
+          return { success: true, ds };
+        }).catch(err => ({ success: false, ds, err }));
+      } catch (e) {
+        return Promise.resolve({ success: false, ds, err: e });
+      }
+    });
+
+    Promise.all(refreshPromises).then(results => {
+      results.forEach(r => {
+        if (!r.success) console.warn(`Refresh failed: ${r.ds && r.ds.name}`, r.err);
       });
-
-      Promise.all(promises).then(() => {
-        console.log("All datasources refreshed. Starting next timeout.");
-        refreshIntervalStart = Date.now();
-        startRefreshTimeout(currentIntervalSec);
-      }).catch(err => {
-        console.error("Error during batch refresh", err);
-      });
-    }, interval * 1000);
+      startCircularTimer(currentIntervalSec, triggerRefreshCycle);
+    }).catch(err => {
+      console.error("Error in refresh cycle", err);
+      startCircularTimer(currentIntervalSec, triggerRefreshCycle);
+    });
   }
 
-  function stopRefresh() {
-    console.log("Stopping refresh timers and animations.");
-    clearTimeout(refreshTimeout);
-    cancelAnimationFrame(countdownAnim);
+  function stopAllTimers() {
+    if (countdownAnim) {
+      cancelAnimationFrame(countdownAnim);
+      countdownAnim = null;
+    }
+    if (refreshTimeout) {
+      clearTimeout(refreshTimeout);
+      refreshTimeout = null;
+    }
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
-  function formatTime(totalSeconds) {
-    const m = Math.floor(totalSeconds / 60);
-    const s = Math.floor(totalSeconds % 60);
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  }
-
-  function drawFrame() {
+  function startCircularTimer(seconds, onComplete) {
     if (!ctx) return;
-    const now = Date.now();
-    
-    const totalElapsedSeconds = Math.floor((now - startTime) / 1000);
-    const refreshElapsed = Math.floor((now - refreshIntervalStart) / 1000);
-    const remaining = Math.max(currentIntervalSec - refreshElapsed, 0);
+    seconds = Math.max(1, Math.floor(Number(seconds) || 1));
+    const startTime = Date.now();
 
-    const w = canvas.width / dpr;
-    const h = canvas.height / dpr;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    ctx.clearRect(0, 0, w, h);
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
 
-    // Draw background bar
-    const barHeight = 16;
-    const barY = h / 2 - barHeight / 2;
-    ctx.fillStyle = '#e6e9ee';
-    ctx.fillRect(0, barY, w, barHeight);
+    function drawFrame() {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(seconds - elapsed, 0);
 
-    // Draw progress bar
-    const progressWidth = (w * (currentIntervalSec - remaining)) / currentIntervalSec;
-    ctx.fillStyle = '#0d6efd';
-    ctx.fillRect(0, barY, progressWidth, barHeight);
+      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
-    // Draw timer text
-    ctx.fillStyle = '#222';
-    ctx.font = `bold 24px "Segoe UI", Arial`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(`${remaining}s`, w / 2, barY - 10);
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
+      const cx = w / 2;
+      const cy = h / 2;
+      const radius = Math.min(w, h) / 2 - 6;
 
-    // Draw total elapsed time
-    ctx.fillStyle = '#666';
-    ctx.font = `12px "Segoe UI", Arial`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`Total time: ${formatTime(totalElapsedSeconds)}`, w / 2, barY + barHeight + 10);
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+      ctx.strokeStyle = '#e6e9ee';
+      ctx.lineWidth = 8;
+      ctx.stroke();
 
-    countdownAnim = requestAnimationFrame(drawFrame);
+      const progressAngle = ((seconds - remaining) / seconds) * 2 * Math.PI;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, -Math.PI/2, -Math.PI/2 + progressAngle, false);
+      ctx.strokeStyle = '#0d6efd';
+      ctx.lineWidth = 8;
+      ctx.stroke();
+
+      ctx.fillStyle = '#222';
+      ctx.font = `${Math.floor(radius / 1.6)}px "Segoe UI", Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(formatTime(remaining), cx, cy);
+
+      if (remaining > 0) {
+        countdownAnim = requestAnimationFrame(drawFrame);
+      } else {
+        countdownAnim = null;
+        setTimeout(() => {
+          try { if (typeof onComplete === 'function') onComplete(); } catch(e) {}
+        }, 150);
+      }
+    }
+
+    if (countdownAnim) cancelAnimationFrame(countdownAnim);
+    drawFrame();
   }
+
+  window.AutoRefreshConfigure = configure;
 })();
