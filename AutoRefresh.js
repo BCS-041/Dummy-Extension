@@ -1,102 +1,175 @@
 'use strict';
 (function () {
-  const defaultIntervalInMin = '15';
-  let interval2 = '15'
-  let refreshInterval;
+  const KEY_CONFIGURED = 'configured';
+  const KEY_INTERVAL_SEC = 'intervalSeconds';
+  const KEY_SELECTED_DS = 'selectedDatasources';
+
   let activeDatasourceIdList = [];
-  $(document).ready(function () {
-    tableau.extensions.initializeAsync({'configure': configure}).then(function() {     
-	    getSettings();
-      tableau.extensions.settings.addEventListener(tableau.TableauEventType.SettingsChanged, (settingsEvent) => {
-        updateExtensionBasedOnSettings(settingsEvent.newSettings)
-      });
-		  if (tableau.extensions.settings.get("configured") != 1) {
-				configure();
-	    }
+  let uniqueDataSources = [];
+  let countdownAnim = null;
+  let refreshTimeout = null;
+  let currentIntervalSec = 30; // Default 30 seconds
+
+  let startTime = Date.now();
+  let refreshIntervalStart = Date.now();
+
+  const canvas = document.getElementById('timerCanvas');
+  const ctx = canvas ? canvas.getContext('2d') : null;
+  const dpr = window.devicePixelRatio || 1;
+  if (canvas) {
+    canvas.width = canvas.offsetWidth * dpr;
+    canvas.height = canvas.offsetHeight * dpr;
+  }
+
+  window.addEventListener('load', () => {
+    tableau.extensions.initializeAsync({ configure }).then(() => {
+      tableau.extensions.settings.addEventListener(
+        tableau.TableauEventType.SettingsChanged,
+        (event) => {
+          console.log("Settings changed → applying new settings");
+          applySettingsAndStart(event.newSettings);
+        }
+      );
+
+      const configured = tableau.extensions.settings.get(KEY_CONFIGURED);
+      if (configured === '1') {
+        console.log("Extension already configured → restoring settings");
+        applySettingsAndStart(tableau.extensions.settings.getAll());
+      } else {
+        console.log("Extension not yet configured → opening dialog");
+        configure();
+      }
+    }).catch(err => {
+      console.error('Initialize error', err);
     });
   });
-  function getSettings() {
-    let currentSettings = tableau.extensions.settings.getAll();
-    if (currentSettings.selectedDatasources) {
-      activeDatasourceIdList = JSON.parse(currentSettings.selectedDatasources);
-    }  
-	if (currentSettings.intervalkey){
-	  interval2 = currentSettings.intervalkey;
-	}
-	if (currentSettings.selectedDatasources){
-		$('#inactive').hide();
-		$('#active').show();
-		$('#interval').text(currentSettings.intervalkey);
-		$('#datasourceCount').text(activeDatasourceIdList.length);
-		setupRefreshInterval(interval2);
-	}
-  }	  
+
   function configure() {
-    const popupUrl = `${window.location.origin}/AutoRefreshDialog.html`;
+    const popupUrl = "AutoRefreshDialog.html";
+    console.log("Configure clicked, opening dialog");
 
-    tableau.extensions.ui.displayDialogAsync(popupUrl, defaultIntervalInMin, { height: 500, width: 500 }).then((closePayload) => {
-
-      $('#inactive').hide();
-      $('#active').show();
-
-      $('#interval').text(closePayload);
-      setupRefreshInterval(closePayload);
-    }).catch((error) => {
-      switch(error.errorCode) {
-        case tableau.ErrorCodes.DialogClosedByUser:
-          console.log("Dialog was closed by user");
-          break;
-        default:
-          console.error(error.message);
+    tableau.extensions.ui.displayDialogAsync(popupUrl, '', { height: 500, width: 400 }).then((closePayload) => {
+      if (closePayload) {
+        console.log("Dialog closed with payload:", closePayload);
       }
+    }).catch(err => {
+      console.error("Dialog error", err);
     });
   }
-  let uniqueDataSources = []; 
-  function setupRefreshInterval(interval) {
-    if (refreshInterval) {
-      clearTimeout(refreshInterval);
-    }
-    function updateNextRefreshTime(interval) {
-      const nextRefresh = new Date(Date.now() + interval * 1000);
-      const formattedTime = nextRefresh.toLocaleTimeString(); 
-      $('#nextrefresh').text(formattedTime); 
-    }
-    function collectUniqueDataSources() {
-      let dashboard = tableau.extensions.dashboardContent.dashboard;
-      let uniqueDataSourceIds = new Set(); 
-      uniqueDataSources = []; 
-      let dataSourcePromises = dashboard.worksheets.map((worksheet) =>
-        worksheet.getDataSourcesAsync().then((datasources) => {
-          datasources.forEach((datasource) => {
-            if (!uniqueDataSourceIds.has(datasource.id) && activeDatasourceIdList.includes(datasource.id)) {
-              uniqueDataSourceIds.add(datasource.id); 
-              uniqueDataSources.push(datasource); 
-            }
-          });
-        })
-      );
-      return Promise.all(dataSourcePromises);
-    }
-    function refreshDataSources() {
-      if (refreshInterval) {
-        clearTimeout(refreshInterval);
-      }
-      const refreshPromises = uniqueDataSources.map((datasource) => datasource.refreshAsync());
-      Promise.all(refreshPromises).then(() => {
-        updateNextRefreshTime(interval);
-        refreshInterval = setTimeout(refreshDataSources, interval * 1000); // Schedule next refresh
+
+  function applySettingsAndStart(newSettings) {
+    const interval = parseInt(newSettings[KEY_INTERVAL_SEC], 10);
+    const selectedDS = newSettings[KEY_SELECTED_DS] ? JSON.parse(newSettings[KEY_SELECTED_DS]) : [];
+    
+    stopRefresh();
+
+    if (!isNaN(interval) && interval > 0) {
+      currentIntervalSec = interval;
+      console.log("New interval set to", currentIntervalSec, "seconds");
+
+      startTime = Date.now();
+      refreshIntervalStart = Date.now();
+      
+      startRefreshTimeout(currentIntervalSec);
+      
+      const dashboard = tableau.extensions.dashboardContent.dashboard;
+      const promises = dashboard.worksheets.map(ws => ws.getDataSourcesAsync());
+      
+      Promise.all(promises).then(allLists => {
+        const datasources = allLists.flat();
+        uniqueDataSources = [...new Set(datasources.map(ds => ds.id))];
+        
+        if (selectedDS.length > 0) {
+          activeDatasourceIdList = datasources.filter(ds => selectedDS.includes(ds.id)).map(ds => ds.id);
+        } else {
+          activeDatasourceIdList = datasources.map(ds => ds.id);
+        }
+        
+        console.log("Datasources to refresh:", activeDatasourceIdList);
+      }).catch(err => {
+        console.error("Datasource fetch error", err);
       });
+      
+    } else {
+      console.warn("Invalid interval received from settings.");
     }
-    collectUniqueDataSources().then(() => {
-      $('#uniqueCount').text(uniqueDataSources.length); 
-      refreshDataSources(); 
-      updateNextRefreshTime(interval);
-    });
   }
-  function updateExtensionBasedOnSettings(settings) {
-    if (settings.selectedDatasources) {
-      activeDatasourceIdList = JSON.parse(settings.selectedDatasources);
-      $('#datasourceCount').text(activeDatasourceIdList.length);
-    }
+
+  function startRefreshTimeout(interval) {
+    console.log("Starting refresh timeout for", interval, "seconds");
+    
+    drawFrame();
+
+    refreshTimeout = setTimeout(() => {
+      const dashboard = tableau.extensions.dashboardContent.dashboard;
+      const promises = activeDatasourceIdList.map(dsId => {
+        return dashboard.getDataSourceByIdAsync(dsId).then(dataSource => {
+          return dataSource.refreshAsync();
+        }).catch(err => {
+          console.error("Refresh failed for datasource", dsId, err);
+        });
+      });
+
+      Promise.all(promises).then(() => {
+        console.log("All datasources refreshed. Starting next timeout.");
+        refreshIntervalStart = Date.now();
+        startRefreshTimeout(currentIntervalSec);
+      }).catch(err => {
+        console.error("Error during batch refresh", err);
+      });
+    }, interval * 1000);
+  }
+
+  function stopRefresh() {
+    console.log("Stopping refresh timers and animations.");
+    clearTimeout(refreshTimeout);
+    cancelAnimationFrame(countdownAnim);
+  }
+
+  function formatTime(totalSeconds) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = Math.floor(totalSeconds % 60);
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  function drawFrame() {
+    if (!ctx) return;
+    const now = Date.now();
+    
+    const totalElapsedSeconds = Math.floor((now - startTime) / 1000);
+    const refreshElapsed = Math.floor((now - refreshIntervalStart) / 1000);
+    const remaining = Math.max(currentIntervalSec - refreshElapsed, 0);
+
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Draw background bar
+    const barHeight = 16;
+    const barY = h / 2 - barHeight / 2;
+    ctx.fillStyle = '#e6e9ee';
+    ctx.fillRect(0, barY, w, barHeight);
+
+    // Draw progress bar
+    const progressWidth = (w * (currentIntervalSec - remaining)) / currentIntervalSec;
+    ctx.fillStyle = '#0d6efd';
+    ctx.fillRect(0, barY, progressWidth, barHeight);
+
+    // Draw timer text
+    ctx.fillStyle = '#222';
+    ctx.font = `bold 24px "Segoe UI", Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`${remaining}s`, w / 2, barY - 10);
+
+    // Draw total elapsed time
+    ctx.fillStyle = '#666';
+    ctx.font = `12px "Segoe UI", Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`Total time: ${formatTime(totalElapsedSeconds)}`, w / 2, barY + barHeight + 10);
+
+    countdownAnim = requestAnimationFrame(drawFrame);
   }
 })();
