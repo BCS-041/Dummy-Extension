@@ -103,7 +103,6 @@
           });
         });
         
-        // Use a slight delay to ensure all async calls are completed before resolving
         setTimeout(() => resolve(), 500); 
       } catch (e) {
         reject(e);
