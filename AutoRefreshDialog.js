@@ -5,46 +5,44 @@
   const KEY_SELECTED_DS = 'selectedDatasources';
 
   window.addEventListener('load', () => {
-    console.log("Dialog loading...");
-    tableau.extensions.initializeDialogAsync().then(function () {
-      console.log("Dialog initialized");
+    tableau.extensions.initializeDialogAsync().then(() => {
       const settings = tableau.extensions.settings.getAll();
 
+      // Set interval input
       const intervalInput = document.getElementById('intervalInput');
-      if (settings[KEY_INTERVAL_SEC]) {
-        intervalInput.value = parseInt(settings[KEY_INTERVAL_SEC], 10);
-      } else {
-        intervalInput.value = 30;
-      }
+      intervalInput.value = settings[KEY_INTERVAL_SEC] || 30;
 
+      // Populate datasources
       const dashboard = tableau.extensions.dashboardContent.dashboard;
       const seen = new Set();
       const savedDS = settings[KEY_SELECTED_DS] ? JSON.parse(settings[KEY_SELECTED_DS]) : [];
       const dsListElement = document.getElementById('datasourcesList');
 
-      Promise.all(dashboard.worksheets.map(ws => ws.getDataSourcesAsync())).then(allLists => {
-        const datasources = allLists.flat();
-        datasources.forEach(ds => {
-          if (!seen.has(ds.id)) {
-            seen.add(ds.id);
-            const checked = savedDS.includes(ds.id) ? 'checked' : '';
-            const dsItem = document.createElement('div');
-            dsItem.className = 'ds-item';
-            dsItem.innerHTML = `
-              <input type="checkbox" class="ds-checkbox" value="${escapeHtml(ds.id)}" id="ds_${escapeHtml(ds.id)}" ${checked}>
-              <label for="ds_${escapeHtml(ds.id)}">${escapeHtml(ds.name)}</label>
-            `;
-            dsListElement.appendChild(dsItem);
-          }
+      Promise.all(dashboard.worksheets.map(ws => ws.getDataSourcesAsync()))
+        .then(allLists => {
+          const datasources = allLists.flat();
+          datasources.forEach(ds => {
+            if (!seen.has(ds.id)) {
+              seen.add(ds.id);
+              const checked = savedDS.includes(ds.id) ? 'checked' : '';
+              const dsItem = document.createElement('div');
+              dsItem.className = 'ds-item';
+              dsItem.innerHTML = `
+                <input type="checkbox" class="ds-checkbox" value="${escapeHtml(ds.id)}" id="ds_${escapeHtml(ds.id)}" ${checked}>
+                <label for="ds_${escapeHtml(ds.id)}">${escapeHtml(ds.name)}</label>
+              `;
+              dsListElement.appendChild(dsItem);
+            }
+          });
+        }).catch(err => {
+          console.error("Datasource population failed:", err);
         });
-      }).catch(err => {
-        console.error("Datasource population failed:", err);
-      });
 
+      // Save button
       document.getElementById('saveBtn').addEventListener('click', () => {
         const seconds = parseInt(intervalInput.value, 10);
-        if (isNaN(seconds) || seconds < 1) {
-          alert("Enter a valid interval (>=1 second)");
+        if (isNaN(seconds) || seconds < 5) {
+          alert("Enter a valid interval (>=5 seconds)");
           return;
         }
 
@@ -55,15 +53,14 @@
         tableau.extensions.settings.set(KEY_CONFIGURED, '1');
 
         tableau.extensions.settings.saveAsync().then(() => {
-          console.log("Settings saved, closing dialog");
           tableau.extensions.ui.closeDialog();
         }).catch(err => {
           console.error("Settings save failed", err);
         });
       });
 
+      // Cancel button
       document.getElementById('cancelBtn').addEventListener('click', () => {
-        console.log("Cancel clicked");
         tableau.extensions.ui.closeDialog();
       });
     }).catch(err => {
