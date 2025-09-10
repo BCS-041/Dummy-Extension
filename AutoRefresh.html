@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Tableau Auto Refresh - Timer</title>
 
-  <!-- Rounded timer styling -->
+  <!-- Timer Styles -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,7 +15,7 @@
       <span id="countdown">00:30</span>
     </div>
 
-    <!-- Controls (hidden once the timer starts) -->
+    <!-- Controls (hidden once timer starts) -->
     <div class="controls" id="controls">
       <input type="number" id="interval" placeholder="30" min="5">
       <button id="startBtn">Start</button>
@@ -24,7 +24,7 @@
 
   <!-- Tableau Extension API -->
   <script src="https://extension-api.tableau.com/extensions/extensions.2.latest.js"></script>
-  <!-- Your integrated refresh logic -->
+  <!-- Core logic -->
   <script src="AutoRefresh.js"></script>
 </body>
 </html>
