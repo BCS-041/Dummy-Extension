@@ -1,86 +1,75 @@
 'use strict';
+
 (function () {
-  const DATASOURCES_KEY = 'selectedDatasources';
-  const INTERVAL_KEY = 'intervalkey';
-  const CONFIGURED_KEY = 'configured';
+    const DEFAULT_INTERVAL_MIN = 15;
+    let refreshIntervalId = null;
+    let activeDatasourceIds = [];
+    let refreshIntervalMin = DEFAULT_INTERVAL_MIN;
 
-  let selectedDatasources = [];
+    $(document).ready(function () {
+        tableau.extensions.initializeAsync({ configure: configure }).then(() => {
+            loadSettings();
 
-  $(document).ready(function () {
-    tableau.extensions.initializeDialogAsync().then(function (openPayload) {
-      // Pre-fill interval (from payload or settings)
-      if (tableau.extensions.settings.get(CONFIGURED_KEY) === "1") {
-        $('#interval').val(tableau.extensions.settings.get(INTERVAL_KEY));
-      } else {
-        $('#interval').val(openPayload || 60);
-      }
+            tableau.extensions.settings.addEventListener(
+                tableau.TableauEventType.SettingsChanged,
+                loadSettings
+            );
 
-      // Parse already saved datasources
-      selectedDatasources = parseSettingsForActiveDataSources();
-
-      const dashboard = tableau.extensions.dashboardContent.dashboard;
-      let visibleDatasources = [];
-
-      // Build datasource list UI
-      dashboard.worksheets.forEach(function (worksheet) {
-        worksheet.getDataSourcesAsync().then(function (datasources) {
-          datasources.forEach(function (datasource) {
-            let isActive = (selectedDatasources.indexOf(datasource.id) >= 0);
-            if (visibleDatasources.indexOf(datasource.id) < 0) {
-              addDataSourceItemToUI(datasource, isActive);
-              visibleDatasources.push(datasource.id);
-            }
-          });
-        });
-      });
-
-      // Save & close
-      $('#closeButton').click(closeDialog);
+            $('#startRefreshBtn').click(startRefresh);
+            $('#stopRefreshBtn').click(stopRefresh);
+        }).catch(err => console.error('Initialization error:', err));
     });
-  });
 
-  function parseSettingsForActiveDataSources() {
-    let settings = tableau.extensions.settings.getAll();
-    if (settings[DATASOURCES_KEY]) {
-      return JSON.parse(settings[DATASOURCES_KEY]);
+    // Opens configuration dialog
+    function configure() {
+        const popupUrl = `${window.location.origin}/configure.html`;
+        tableau.extensions.ui.displayDialogAsync(popupUrl, '', { width: 500, height: 400 })
+            .then(() => loadSettings())
+            .catch(err => console.error('Dialog closed or error:', err));
     }
-    return [];
-  }
 
-  function updateDatasourceList(id) {
-    let idIndex = selectedDatasources.indexOf(id);
-    if (idIndex < 0) {
-      selectedDatasources.push(id);
-    } else {
-      selectedDatasources.splice(idIndex, 1);
+    // Load settings from Tableau
+    function loadSettings() {
+        const settings = tableau.extensions.settings.getAll();
+        refreshIntervalMin = parseInt(settings.refreshInterval || DEFAULT_INTERVAL_MIN, 10);
+        activeDatasourceIds = settings.activeDatasourceIds ? JSON.parse(settings.activeDatasourceIds) : [];
+
+        $('#intervalInput').val(refreshIntervalMin);
+        const list = $('#datasourceList').empty();
+
+        if (activeDatasourceIds.length > 0) {
+            activeDatasourceIds.forEach(id => list.append(`<li>${id}</li>`));
+        } else {
+            list.append('<li>No datasources configured</li>');
+        }
     }
-  }
 
-  function addDataSourceItemToUI(datasource, isActive) {
-    let containerDiv = $('<div />');
-    $('<input />', {
-      type: 'checkbox',
-      id: datasource.id,
-      value: datasource.name,
-      checked: isActive,
-      click: function () { updateDatasourceList(datasource.id); }
-    }).appendTo(containerDiv);
+    // Start auto-refresh
+    function startRefresh() {
+        if (refreshIntervalId) clearInterval(refreshIntervalId);
 
-    $('<label />', {
-      'for': datasource.id,
-      text: datasource.name,
-    }).appendTo(containerDiv);
+        if (activeDatasourceIds.length === 0) {
+            alert('No datasources selected for auto-refresh.');
+            return;
+        }
 
-    $('#datasources').append(containerDiv);
-  }
+        refreshIntervalId = setInterval(() => {
+            activeDatasourceIds.forEach(id => {
+                tableau.extensions.dashboardContent.dashboard.getDataSourceAsync(id)
+                    .then(ds => ds.refreshAsync())
+                    .catch(err => console.error('Refresh failed for datasource', id, err));
+            });
+        }, refreshIntervalMin * 60 * 1000);
 
-  function closeDialog() {
-    tableau.extensions.settings.set(DATASOURCES_KEY, JSON.stringify(selectedDatasources));
-    tableau.extensions.settings.set(INTERVAL_KEY, $('#interval').val());
-    tableau.extensions.settings.set(CONFIGURED_KEY, "1");
+        console.log(`Auto-refresh started: every ${refreshIntervalMin} minutes`);
+    }
 
-    tableau.extensions.settings.saveAsync().then(() => {
-      tableau.extensions.ui.closeDialog($('#interval').val()); // pass interval back to AutoRefresh.js
-    });
-  }
+    // Stop auto-refresh
+    function stopRefresh() {
+        if (refreshIntervalId) {
+            clearInterval(refreshIntervalId);
+            refreshIntervalId = null;
+            console.log('Auto-refresh stopped.');
+        }
+    }
 })();
