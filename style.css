@@ -4,7 +4,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #f9f9fb; /* light background */
+  background: transparent; /* light background */
   font-family: "Segoe UI", Arial, sans-serif;
   color: #333;
 }
@@ -48,6 +48,7 @@ input {
   text-align: center;
   margin-right: 10px;
   font-size: 0.9rem;
+  background: #fff;
 }
 
 button {
@@ -61,7 +62,7 @@ button {
   font-size: 0.9rem;
   transition: background 0.2s ease;
 }
-
 button:hover {
   background: #0b5ed7;
 }
+
