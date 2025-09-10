@@ -7,42 +7,34 @@
   window.addEventListener('load', () => {
     tableau.extensions.initializeDialogAsync().then(() => {
       const settings = tableau.extensions.settings.getAll();
-
-      // Prefill interval
       const intervalInput = document.getElementById('intervalInput');
       intervalInput.value = settings[KEY_INTERVAL_SEC] || 30;
 
-      // Populate datasources
-      const dashboard = tableau.extensions.dashboardContent.dashboard;
-      const seen = new Set();
       const savedDS = settings[KEY_SELECTED_DS] ? JSON.parse(settings[KEY_SELECTED_DS]) : [];
       const dsListElement = document.getElementById('datasourcesList');
+      const seen = new Set();
 
-      Promise.all(dashboard.worksheets.map(ws => ws.getDataSourcesAsync()))
+      Promise.all(tableau.extensions.dashboardContent.dashboard.worksheets.map(ws => ws.getDataSourcesAsync()))
         .then(allLists => {
-          const datasources = allLists.flat();
-          datasources.forEach(ds => {
+          allLists.flat().forEach(ds => {
             if (!seen.has(ds.id)) {
               seen.add(ds.id);
               const checked = savedDS.includes(ds.id) ? 'checked' : '';
-              const dsItem = document.createElement('div');
-              dsItem.className = 'ds-item';
-              dsItem.innerHTML = `
+              const item = document.createElement('div');
+              item.className = 'ds-item';
+              item.innerHTML = `
                 <input type="checkbox" class="ds-checkbox" value="${escapeHtml(ds.id)}" id="ds_${escapeHtml(ds.id)}" ${checked}>
                 <label for="ds_${escapeHtml(ds.id)}">${escapeHtml(ds.name)}</label>
               `;
-              dsListElement.appendChild(dsItem);
+              dsListElement.appendChild(item);
             }
           });
-        }).catch(err => {
-          console.error("❌ Datasource population failed:", err);
         });
 
-      // Save button
       document.getElementById('saveBtn').addEventListener('click', () => {
         const seconds = parseInt(intervalInput.value, 10);
         if (isNaN(seconds) || seconds < 5) {
-          alert("Enter a valid interval (>=5 seconds)");
+          alert("Enter a valid interval (>= 5)");
           return;
         }
 
@@ -53,27 +45,20 @@
         tableau.extensions.settings.set(KEY_CONFIGURED, '1');
 
         tableau.extensions.settings.saveAsync().then(() => {
-          // ✅ Notify AutoRefresh.js
           tableau.extensions.ui.closeDialog("saved");
-        }).catch(err => {
-          console.error("❌ Settings save failed", err);
         });
       });
 
-      // Cancel button
       document.getElementById('cancelBtn').addEventListener('click', () => {
         tableau.extensions.ui.closeDialog("cancelled");
       });
-    }).catch(err => {
-      console.error('❌ Dialog initialization failed:', err);
     });
   });
 
   function escapeHtml(text) {
-    if (!text) return '';
-    return text.replace(/[&<>\"'`=\/]/g, s => ({
+    return text ? text.replace(/[&<>\"'`=\/]/g, s => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;',
       '"': '&quot;', "'": '&#39;', '/': '&#x2F;'
-    })[s]);
+    })[s]) : '';
   }
 })();
