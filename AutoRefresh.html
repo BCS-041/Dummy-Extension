@@ -41,25 +41,25 @@
     margin-top: 15px;
   }
 
-  #active p {
+  /* #active p {
     font-size: 16px;
     margin-bottom: 10px;
     color: #212529;
-  }
+  } */
 
-  #active b {
+  /* #active b {
     color: #007bff;
-  }
+  } */
 
   /* Timer / countdown style */
-  #nextrefresh {
+  /* #nextrefresh {
     font-family: 'Courier New', Courier, monospace;
     background-color: #e9ecef;
     padding: 4px 8px;
     border-radius: 6px;
     font-weight: bold;
     color: #495057;
-  }
+  } */
 
   #datasourceCount, #interval, #uniqueCount {
     background-color: #e9ecef;
@@ -86,6 +86,33 @@
       width: 45%;
     }
   }
+
+
+  /*  */
+   #active {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #nextrefresh {
+    background-color: #e9ecef;
+    padding: 15px 40px;
+    border-radius: 12px;
+    color: #007bff;
+    font-weight: bold;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    display: inline-block;
+    min-width: 120px;
+    text-align: center;
+    letter-spacing: 2px;
+  }
+
+  /* Blinking colon effect */
+  #nextrefresh::after {
+    content: '';
+  }
+  /*  */
 </style>
 
     <!-- STYLE -->
@@ -93,10 +120,11 @@
   <body>
     <div class="container">
       <p id="mainContent">
-        <div id="active" style="display: none;">
-          <p>Refreshing <b><span id="datasourceCount">0</span></b> datasource(s) every <b><span id="interval">5</span></b> seconds. Next refresh at <b><span id="nextrefresh">12:00:00</span></b></p>
-          <p>Unique datasources <span id="uniqueCount">0</span></p>
-        </div>
+        <div id="active" style="display: none; text-align: center;">
+  <p style="margin:0; font-size: 48px; font-family: 'Courier New', Courier, monospace;">
+    <b><span id="nextrefresh">05:00</span></b>
+  </p>
+</div>
         <div id="inactive">
           <table style="margin-bottom:0px">
             <tbody>
