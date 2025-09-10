@@ -7,150 +7,134 @@
   <title>Auto Refresh Settings</title>
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-    
     body {
-      font-family: 'Poppins', sans-serif;
       margin: 0;
-      background: #f0f2f5;
-      color: #333;
-      padding: 24px;
-    }
-    .dialog-container {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-      padding: 24px;
-      max-width: 400px;
-      margin: 0 auto;
-    }
-    h2 {
-      margin: 0 0 16px 0;
-      color: #0d6efd;
-      font-weight: 600;
-      text-align: center;
-    }
-    .sub-heading {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    .input-group {
+      background: #1e213f;
+      font-family: Arial, sans-serif;
+      color: #d7e0ff;
       display: flex;
-      flex-direction: column;
-      margin-bottom: 18px;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
+
+    .dialog-container {
+      background: #151932;
+      border-radius: 16px;
+      box-shadow: 0px 0px 30px rgba(108, 99, 255, 0.6);
+      padding: 24px;
+      width: 90%;
+      max-width: 420px;
+      color: #d7e0ff;
+    }
+
+    h2 {
+      text-align: center;
+      color: #6c63ff;
+      margin-bottom: 10px;
+    }
+
+    .sub-heading {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #aaa;
+      margin-bottom: 20px;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+    }
+
     label {
+      display: block;
       font-size: 14px;
       margin-bottom: 8px;
-      color: #555;
+      color: #d7e0ff;
     }
+
     input[type="number"] {
-      background: #f7f9fc;
-      border: 1px solid #e0e2e6;
-      color: #333;
-      padding: 10px 12px;
+      width: 100%;
+      padding: 10px;
+      border: none;
       border-radius: 8px;
-      transition: all 0.3s ease;
-    }
-    input[type="number"]:focus {
+      background: #1e213f;
+      color: #fff;
+      font-size: 1rem;
       outline: none;
-      border-color: #0d6efd;
-      box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+      box-shadow: inset 0 0 5px rgba(108, 99, 255, 0.6);
     }
+
     .datasources-list {
       max-height: 200px;
       overflow-y: auto;
-      background: #f7f9fc;
-      border: 1px solid #e0e2e6;
+      background: #1e213f;
       border-radius: 8px;
       padding: 10px;
       margin-bottom: 20px;
+      box-shadow: inset 0 0 5px rgba(108, 99, 255, 0.6);
     }
+
     .ds-item {
       display: flex;
       align-items: center;
-      padding: 10px;
-      border-bottom: 1px solid #e0e2e6;
-      transition: background-color 0.3s ease;
+      padding: 8px;
+      border-bottom: 1px solid #2b2d52;
     }
+
     .ds-item:last-child {
       border-bottom: none;
     }
-    .ds-item:hover {
-      background-color: #eef3f7;
-    }
+
     .ds-checkbox {
       margin-right: 12px;
-      appearance: none;
-      width: 18px;
-      height: 18px;
-      border: 2px solid #ccc;
-      border-radius: 4px;
-      cursor: pointer;
-      position: relative;
+      accent-color: #6c63ff;
     }
-    .ds-checkbox:checked {
-      background-color: #0d6efd;
-      border-color: #0d6efd;
-    }
-    .ds-checkbox:checked:after {
-      content: '✓';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 14px;
-      color: #fff;
-    }
-    label { cursor: pointer; }
+
     .buttons {
       display: flex;
       justify-content: flex-end;
       gap: 12px;
     }
+
     button {
-      font-family: 'Poppins', sans-serif;
-      font-weight: 600;
-      padding: 12px 24px;
       border: none;
+      padding: 10px 20px;
       border-radius: 8px;
+      font-weight: bold;
       cursor: pointer;
-      transition: all 0.3s ease;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      font-size: 0.9rem;
     }
+
     #saveBtn {
-      background: linear-gradient(45deg, #0d6efd, #0d8bff);
-      color: #fff;
-      box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4);
+      background: #6c63ff;
+      color: white;
     }
+
     #saveBtn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(13, 110, 253, 0.6);
+      background: #4e47d1;
     }
+
     #cancelBtn {
-      background: #e6e6e6;
-      color: #333;
+      background: #444;
+      color: #fff;
     }
+
     #cancelBtn:hover {
-      background: #ddd;
+      background: #666;
     }
   </style>
 </head>
 <body>
   <div class="dialog-container">
     <h2>Auto Refresh Settings</h2>
-    <div class="sub-heading">Select the datasources you want to automatically refresh. Leaving none selected will refresh all datasources on the dashboard.</div>
+    <div class="sub-heading">Select the datasources to refresh and set interval.</div>
 
     <div class="input-group">
       <label for="intervalInput">Refresh Interval (seconds):</label>
-      <input id="intervalInput" type="number" min="1" step="1" placeholder="30">
+      <input id="intervalInput" type="number" min="5" step="1" placeholder="30">
     </div>
 
-    <div class="datasources-list" id="datasourcesList">
-      </div>
+    <div class="datasources-list" id="datasourcesList"></div>
 
     <div class="buttons">
       <button id="cancelBtn" type="button">Cancel</button>
