@@ -13,8 +13,9 @@ body {
 }
 
 .circle {
-  width: 250px;
-  height: 250px;
+  width: 40vw;              /* responsive */
+  max-width: 300px;         /* cap size */
+  aspect-ratio: 1 / 1;      /* keep circle shape */
   border-radius: 50%;
   border: 6px solid #6c63ff;
   display: flex;
@@ -23,12 +24,15 @@ body {
   background: #151932;
   box-shadow: 0px 0px 30px rgba(108, 99, 255, 0.6);
   margin: 0 auto;
+  padding: 10px;
 }
 
 .circle span {
-  font-size: 3rem;
+  font-size: clamp(1.5rem, 8vw, 3rem); /* responsive font */
   font-weight: bold;
   color: #d7e0ff;
+  line-height: 1;
+  text-align: center;
 }
 
 .controls {
