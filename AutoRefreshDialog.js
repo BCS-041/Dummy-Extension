@@ -8,7 +8,7 @@
     tableau.extensions.initializeDialogAsync().then(() => {
       const settings = tableau.extensions.settings.getAll();
 
-      // Set interval input
+      // Prefill interval
       const intervalInput = document.getElementById('intervalInput');
       intervalInput.value = settings[KEY_INTERVAL_SEC] || 30;
 
@@ -35,7 +35,7 @@
             }
           });
         }).catch(err => {
-          console.error("Datasource population failed:", err);
+          console.error("❌ Datasource population failed:", err);
         });
 
       // Save button
@@ -53,28 +53,27 @@
         tableau.extensions.settings.set(KEY_CONFIGURED, '1');
 
         tableau.extensions.settings.saveAsync().then(() => {
-          tableau.extensions.ui.closeDialog();
+          // ✅ Notify AutoRefresh.js
+          tableau.extensions.ui.closeDialog("saved");
         }).catch(err => {
-          console.error("Settings save failed", err);
+          console.error("❌ Settings save failed", err);
         });
       });
 
       // Cancel button
       document.getElementById('cancelBtn').addEventListener('click', () => {
-        tableau.extensions.ui.closeDialog();
+        tableau.extensions.ui.closeDialog("cancelled");
       });
     }).catch(err => {
-      console.error('Dialog initialization failed:', err);
+      console.error('❌ Dialog initialization failed:', err);
     });
   });
 
   function escapeHtml(text) {
     if (!text) return '';
-    return text.replace(/[&<>\"'`=\/]/g, function (s) {
-      return ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;',
-        '"': '&quot;', "'": '&#39;', '/': '&#x2F;'
-      })[s];
-    });
+    return text.replace(/[&<>\"'`=\/]/g, s => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;',
+      '"': '&quot;', "'": '&#39;', '/': '&#x2F;'
+    })[s]);
   }
 })();
