@@ -7,7 +7,7 @@
   let activeDatasourceIdList = [];
   let uniqueDataSources = [];
   let timerInterval = null;
-  let refreshInterval = 30; // default 30s
+  let refreshInterval = 30;
   let endTime = null;
 
   const countdownEl = document.getElementById("countdown");
@@ -15,7 +15,7 @@
   const intervalInput = document.getElementById("interval");
   const startBtn = document.getElementById("startBtn");
 
-  // --- TIMER LOGIC ---
+  // ---------------- Timer Functions ----------------
   function formatTime(seconds) {
     let mins = Math.floor(seconds / 60);
     let secs = seconds % 60;
@@ -28,19 +28,15 @@
 
     timerInterval = setInterval(() => {
       let remaining = Math.floor((endTime - Date.now()) / 1000);
-
       if (remaining <= 0) {
         clearInterval(timerInterval);
-
-        // 🔄 Refresh Tableau datasources
-        triggerRefreshCycle();
-
+        triggerRefreshCycle(); // refresh Tableau
       } else {
         countdownEl.textContent = formatTime(remaining);
       }
     }, 1000);
 
-    controls.style.display = "none"; // hide manual controls once active
+    controls.style.display = "none"; 
     countdownEl.textContent = formatTime(refreshInterval);
     resizeCountdown();
   }
@@ -50,6 +46,109 @@
       clearInterval(timerInterval);
       timerInterval = null;
     }
+  }
+
+  function resizeCountdown() {
+    const circle = document.querySelector('.circle');
+    if (!circle || !countdownEl) return;
+    const circleWidth = circle.offsetWidth;
+    countdownEl.style.fontSize = (circleWidth / 5) + 'px';
+  }
+
+  window.addEventListener('resize', resizeCountdown);
+  window.addEventListener('load', resizeCountdown);
+
+  // ---------------- Tableau Integration ----------------
+  $(document).ready(function () {
+    tableau.extensions.initializeAsync({ configure }).then(() => {
+      tableau.extensions.settings.addEventListener(
+        tableau.TableauEventType.SettingsChanged,
+        (event) => {
+          applySettingsAndStart(event.newSettings);
+        }
+      );
+
+      const configured = tableau.extensions.settings.get(KEY_CONFIGURED);
+      if (configured === '1') {
+        applySettingsAndStart(tableau.extensions.settings.getAll());
+      } else {
+        configure(); // open dialog first time
+      }
+    }).catch(err => {
+      console.error('Initialize error', err);
+    });
+  });
+
+  function configure() {
+    const popupUrl = "AutoRefreshDialog.html";
+    tableau.extensions.ui.displayDialogAsync(popupUrl, null, { height: 500, width: 420 })
+      .then(() => {
+        // Dialog closed after saving
+        applySettingsAndStart(tableau.extensions.settings.getAll());
+      })
+      .catch(err => {
+        if (err && err.errorCode === tableau.ErrorCodes.DialogClosedByUser) {
+          console.warn("Dialog closed by user without saving.");
+        } else {
+          console.error("Dialog error", err);
+        }
+      });
+  }
+
+  function applySettingsAndStart(settings) {
+    stopTimer();
+
+    // Load selected datasources
+    if (settings[KEY_SELECTED_DS]) {
+      try {
+        activeDatasourceIdList = JSON.parse(settings[KEY_SELECTED_DS]);
+        if (!Array.isArray(activeDatasourceIdList)) activeDatasourceIdList = [];
+      } catch {
+        activeDatasourceIdList = [];
+      }
+    }
+
+    // Load interval
+    if (settings[KEY_INTERVAL_SEC]) {
+      const v = parseInt(settings[KEY_INTERVAL_SEC], 10);
+      if (!isNaN(v) && v > 0) refreshInterval = v;
+    }
+
+    collectUniqueDataSources().then(() => {
+      startTimer();
+    }).catch(err => {
+      console.error('Error collecting datasources', err);
+    });
+  }
+
+  function collectUniqueDataSources() {
+    return new Promise((resolve, reject) => {
+      try {
+        const dashboard = tableau.extensions.dashboardContent.dashboard;
+        const uniqueIds = new Set();
+        uniqueDataSources = [];
+
+        const promises = dashboard.worksheets.map(ws =>
+          ws.getDataSourcesAsync().then(dsList => {
+            dsList.forEach(ds => {
+              if (activeDatasourceIdList.length === 0 || activeDatasourceIdList.includes(ds.id)) {
+                if (!uniqueIds.has(ds.id)) {
+                  uniqueIds.add(ds.id);
+                  uniqueDataSources.push(ds);
+                }
+              }
+            });
+          })
+        );
+
+        Promise.all(promises).then(() => {
+          console.log("✅ Collected datasources:", uniqueDataSources.map(d => d.name));
+          resolve();
+        }).catch(reject);
+      } catch (e) {
+        reject(e);
+      }
+    });
   }
 
   function triggerRefreshCycle() {
@@ -72,7 +171,7 @@
       .finally(() => startTimer());
   }
 
-  // --- Manual Start ---
+  // Manual start from UI
   if (startBtn) {
     startBtn.addEventListener("click", () => {
       let val = parseInt(intervalInput.value, 10);
@@ -81,109 +180,5 @@
     });
   }
 
-  // --- Tableau Initialization ---
-  $(document).ready(function () {
-    tableau.extensions.initializeAsync({ configure }).then(() => {
-      tableau.extensions.settings.addEventListener(
-        tableau.TableauEventType.SettingsChanged,
-        (event) => {
-          applySettingsAndStart(event.newSettings);
-        }
-      );
-
-      const configured = tableau.extensions.settings.get(KEY_CONFIGURED);
-      if (configured === '1') {
-        applySettingsAndStart(tableau.extensions.settings.getAll());
-      }
-    }).catch(err => {
-      console.error('Initialize error', err);
-    });
-  });
-
-  function configure() {
-    const popupUrl = "AutoRefreshDialog.html";
-    tableau.extensions.ui.displayDialogAsync(popupUrl, null, { height: 400, width: 400 })
-      .then(() => {
-        applySettingsAndStart(tableau.extensions.settings.getAll());
-      })
-      .catch(err => {
-        if (err && err.errorCode !== tableau.ErrorCodes.DialogClosedByUser) {
-          console.error("Dialog error", err);
-        }
-      });
-  }
-
-  function applySettingsAndStart(settings) {
-    stopTimer();
-
-    if (settings[KEY_SELECTED_DS]) {
-      try {
-        activeDatasourceIdList = JSON.parse(settings[KEY_SELECTED_DS]);
-        if (!Array.isArray(activeDatasourceIdList)) activeDatasourceIdList = [];
-      } catch {
-        activeDatasourceIdList = [];
-      }
-    } else {
-      activeDatasourceIdList = [];
-    }
-
-    if (settings[KEY_INTERVAL_SEC]) {
-      const v = parseInt(settings[KEY_INTERVAL_SEC], 10);
-      if (!isNaN(v) && v > 0) refreshInterval = v;
-    }
-
-    collectUniqueDataSources().then(() => {
-      if (uniqueDataSources.length === 0) {
-        console.error("❌ No datasources collected.");
-      } else {
-        console.log("✅ Collected datasources:", uniqueDataSources.map(d => d.name));
-      }
-      startTimer();
-    }).catch(err => {
-      console.error('Error collecting datasources', err);
-    });
-  }
-
-  function collectUniqueDataSources() {
-    return new Promise((resolve, reject) => {
-      try {
-        const dashboard = tableau.extensions.dashboardContent.dashboard;
-        const uniqueIds = new Set();
-        uniqueDataSources = [];
-
-        const promises = dashboard.worksheets.map(ws =>
-          ws.getDataSourcesAsync().then(dsList => {
-            console.log(`📊 Worksheet [${ws.name}] datasources:`, dsList.map(d => d.name));
-            dsList.forEach(ds => {
-              if (activeDatasourceIdList.length === 0 || activeDatasourceIdList.includes(ds.id)) {
-                if (!uniqueIds.has(ds.id)) {
-                  uniqueIds.add(ds.id);
-                  uniqueDataSources.push(ds);
-                }
-              }
-            });
-          })
-        );
-
-        Promise.all(promises).then(resolve).catch(reject);
-      } catch (e) {
-        reject(e);
-      }
-    });
-  }
-
-  // --- Auto-resize countdown font ---
-  function resizeCountdown() {
-    const circle = document.querySelector('.circle');
-    const span = document.getElementById('countdown');
-    if (!circle || !span) return;
-    const circleWidth = circle.offsetWidth;
-    span.style.fontSize = (circleWidth / 5) + 'px';
-  }
-
-  window.addEventListener('resize', resizeCountdown);
-  window.addEventListener('load', resizeCountdown);
-
-  // Expose configure
   window.AutoRefreshConfigure = configure;
 })();
