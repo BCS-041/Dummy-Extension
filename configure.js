@@ -1,63 +1,68 @@
 'use strict';
 
-$(document).ready(function () {
-    // Initialize Tableau Extension
-    tableau.extensions.initializeAsync()
-        .then(() => {
-            loadDatasources();
-            loadCurrentSettings();
+(function () {
+  const KEY_INTERVAL = 'refreshInterval';
+  const KEY_DATASOURCES = 'selectedDatasources';
 
-            // Bind Save button
-            $('#saveBtn').click(saveSettings);
-        })
-        .catch(err => console.error('Initialization error:', err));
-});
+  tableau.extensions.initializeDialogAsync().then(() => {
+    loadDatasources();
+    loadCurrentSettings();
+    document.getElementById('saveBtn').addEventListener('click', saveSettings);
+  });
 
-// Load all datasources from the dashboard
-function loadDatasources() {
+  function loadDatasources() {
     tableau.extensions.dashboardContent.dashboard.getDataSourcesAsync()
-        .then(datasources => {
-            const select = $('#datasourceSelect');
-            select.empty();
-            datasources.forEach(ds => select.append(`<option value="${ds.id}">${ds.name}</option>`));
-        })
-        .catch(err => console.error('Error fetching datasources:', err));
-}
+      .then(datasources => {
+        const select = document.getElementById('datasourceSelect');
+        select.innerHTML = '';
+        datasources.forEach(ds => {
+          const option = document.createElement('option');
+          option.value = ds.id;
+          option.textContent = ds.name;
+          select.appendChild(option);
+        });
+      })
+      .catch(err => {
+        console.error('Error fetching datasources:', err);
+      });
+  }
 
-// Load previously saved settings
-function loadCurrentSettings() {
+  function loadCurrentSettings() {
     const settings = tableau.extensions.settings.getAll();
-    const savedIds = settings.activeDatasourceIds ? JSON.parse(settings.activeDatasourceIds) : [];
-    const intervalSec = settings.refreshInterval ? parseInt(settings.refreshInterval, 10) : 60;
+    const savedIds = settings[KEY_DATASOURCES] ? JSON.parse(settings[KEY_DATASOURCES]) : [];
+    const intervalSec = settings[KEY_INTERVAL] ? parseInt(settings[KEY_INTERVAL], 10) : 30;
 
-    $('#intervalInput').val(intervalSec);
-
-    $('#datasourceSelect option').each(function () {
-        if (savedIds.includes($(this).val())) {
-            $(this).prop('selected', true);
-        }
+    document.getElementById('intervalInput').value = intervalSec;
+    const options = document.querySelectorAll('#datasourceSelect option');
+    options.forEach(option => {
+      if (savedIds.includes(option.value)) {
+        option.selected = true;
+      }
     });
-}
+  }
 
-// Save settings to Tableau
-function saveSettings() {
-    const selectedIds = $('#datasourceSelect').val() || [];
-    const intervalSec = parseInt($('#intervalInput').val(), 10);
+  function saveSettings() {
+    const selectedOptions = document.querySelectorAll('#datasourceSelect option:checked');
+    const selectedIds = Array.from(selectedOptions).map(option => option.value);
+    const intervalSec = parseInt(document.getElementById('intervalInput').value, 10);
 
     if (selectedIds.length === 0) {
-        alert('Please select at least one datasource.');
-        return;
+      alert('Please select at least one data source.');
+      return;
     }
 
-    if (isNaN(intervalSec) || intervalSec < 1) {
-        alert('Please enter a valid refresh interval (1 second or more).');
-        return;
+    if (isNaN(intervalSec) || intervalSec < 5) {
+      alert('Please enter a valid refresh interval (at least 5 seconds).');
+      return;
     }
 
-    tableau.extensions.settings.set('activeDatasourceIds', JSON.stringify(selectedIds));
-    tableau.extensions.settings.set('refreshInterval', intervalSec);
-
-    tableau.extensions.settings.saveAsync()
-        .then(() => tableau.extensions.ui.closeDialog('Settings saved!'))
-        .catch(err => console.error('Save settings error:', err));
-}
+    tableau.extensions.settings.set(KEY_DATASOURCES, JSON.stringify(selectedIds));
+    tableau.extensions.settings.set(KEY_INTERVAL, intervalSec);
+    
+    tableau.extensions.settings.saveAsync().then(() => {
+      tableau.extensions.ui.closeDialog('Success');
+    }).catch(err => {
+      console.error('Error saving settings:', err);
+    });
+  }
+})();
