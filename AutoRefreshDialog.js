@@ -1,29 +1,33 @@
 'use strict';
 
 (function () {
-    const DEFAULT_INTERVAL_MIN = 15;
     let refreshIntervalId = null;
     let activeDatasourceIds = [];
-    let refreshIntervalMin = DEFAULT_INTERVAL_MIN;
 
     $(document).ready(function () {
-        tableau.extensions.initializeAsync({ configure: configure }).then(() => {
-            loadSettings();
+        // Initialize Tableau Extension
+        tableau.extensions.initializeAsync({ configure: openConfigureDialog })
+            .then(() => {
+                loadSettings();
+                // Listen for settings changes
+                tableau.extensions.settings.addEventListener(
+                    tableau.TableauEventType.SettingsChanged,
+                    loadSettings
+                );
 
-            tableau.extensions.settings.addEventListener(
-                tableau.TableauEventType.SettingsChanged,
-                loadSettings
-            );
-
-            $('#startRefreshBtn').click(startRefresh);
-            $('#stopRefreshBtn').click(stopRefresh);
-        }).catch(err => console.error('Initialization error:', err));
+                // Bind buttons
+                $('#startRefreshBtn').click(startRefresh);
+                $('#stopRefreshBtn').click(stopRefresh);
+            })
+            .catch(err => console.error('Initialization error:', err));
     });
 
-    // Opens configuration dialog
-    function configure() {
+    // Open the configuration dialog
+    function openConfigureDialog() {
         const popupUrl = `${window.location.origin}/configure.html`;
-        tableau.extensions.ui.displayDialogAsync(popupUrl, '', { width: 500, height: 400 })
+        const popupOptions = { width: 500, height: 400 };
+
+        tableau.extensions.ui.displayDialogAsync(popupUrl, '', popupOptions)
             .then(() => loadSettings())
             .catch(err => console.error('Dialog closed or error:', err));
     }
@@ -31,12 +35,12 @@
     // Load settings from Tableau
     function loadSettings() {
         const settings = tableau.extensions.settings.getAll();
-        refreshIntervalMin = parseInt(settings.refreshInterval || DEFAULT_INTERVAL_MIN, 10);
         activeDatasourceIds = settings.activeDatasourceIds ? JSON.parse(settings.activeDatasourceIds) : [];
+        const intervalSec = settings.refreshInterval ? parseInt(settings.refreshInterval, 10) : 60;
 
-        $('#intervalInput').val(refreshIntervalMin);
+        $('#intervalInput').val(intervalSec);
+
         const list = $('#datasourceList').empty();
-
         if (activeDatasourceIds.length > 0) {
             activeDatasourceIds.forEach(id => list.append(`<li>${id}</li>`));
         } else {
@@ -53,15 +57,21 @@
             return;
         }
 
+        const refreshIntervalSec = parseInt($('#intervalInput').val(), 10);
+        if (isNaN(refreshIntervalSec) || refreshIntervalSec < 1) {
+            alert('Please enter a valid interval (1 second or more).');
+            return;
+        }
+
         refreshIntervalId = setInterval(() => {
             activeDatasourceIds.forEach(id => {
                 tableau.extensions.dashboardContent.dashboard.getDataSourceAsync(id)
                     .then(ds => ds.refreshAsync())
                     .catch(err => console.error('Refresh failed for datasource', id, err));
             });
-        }, refreshIntervalMin * 60 * 1000);
+        }, refreshIntervalSec * 1000);
 
-        console.log(`Auto-refresh started: every ${refreshIntervalMin} minutes`);
+        console.log(`Auto-refresh started: every ${refreshIntervalSec} seconds`);
     }
 
     // Stop auto-refresh
