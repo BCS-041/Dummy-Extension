@@ -1,64 +1,74 @@
 'use strict';
 (function () {
-  const KEY_CONFIGURED = 'configured';
-  const KEY_INTERVAL_SEC = 'intervalSeconds';
-  const KEY_SELECTED_DS = 'selectedDatasources';
+  const datasourcesSettingsKey = 'selectedDatasources';
+  const intervalkey = 'intervalkey';
+  const configured = 'configured'
+  let selectedDatasources = [];
+  $(document).ready(function () {
+    tableau.extensions.initializeDialogAsync().then(function (openPayload) {
+      $('#interval').val(openPayload);
+      $('#closeButton').click(closeDialog);
 
-  window.addEventListener('load', () => {
-    tableau.extensions.initializeDialogAsync().then(() => {
-      const settings = tableau.extensions.settings.getAll();
-      const intervalInput = document.getElementById('intervalInput');
-      intervalInput.value = settings[KEY_INTERVAL_SEC] || 30;
+      let dashboard = tableau.extensions.dashboardContent.dashboard;
+      let visibleDatasources = [];
+      if (tableau.extensions.settings.get('configured') == 1) {
+        $('#interval').val(tableau.extensions.settings.get('intervalkey'));
+      } else {
+        $('#interval').val(60);
+      } 
+      selectedDatasources = parseSettingsForActiveDataSources();
+      dashboard.worksheets.forEach(function (worksheet) {
+        worksheet.getDataSourcesAsync().then(function (datasources) {
+          datasources.forEach(function (datasource) {
+            let isActive = (selectedDatasources.indexOf(datasource.id) >= 0);
 
-      const savedDS = settings[KEY_SELECTED_DS] ? JSON.parse(settings[KEY_SELECTED_DS]) : [];
-      const dsListElement = document.getElementById('datasourcesList');
-      const seen = new Set();
-
-      Promise.all(tableau.extensions.dashboardContent.dashboard.worksheets.map(ws => ws.getDataSourcesAsync()))
-        .then(allLists => {
-          allLists.flat().forEach(ds => {
-            if (!seen.has(ds.id)) {
-              seen.add(ds.id);
-              const checked = savedDS.includes(ds.id) ? 'checked' : '';
-              const item = document.createElement('div');
-              item.className = 'ds-item';
-              item.innerHTML = `
-                <input type="checkbox" class="ds-checkbox" value="${escapeHtml(ds.id)}" id="ds_${escapeHtml(ds.id)}" ${checked}>
-                <label for="ds_${escapeHtml(ds.id)}">${escapeHtml(ds.name)}</label>
-              `;
-              dsListElement.appendChild(item);
+            if (visibleDatasources.indexOf(datasource.id) < 0) {
+              addDataSourceItemToUI(datasource, isActive);
+              visibleDatasources.push(datasource.id);
             }
           });
         });
-
-      document.getElementById('saveBtn').addEventListener('click', () => {
-        const seconds = parseInt(intervalInput.value, 10);
-        if (isNaN(seconds) || seconds < 5) {
-          alert("Enter a valid interval (>= 5)");
-          return;
-        }
-
-        const selected = Array.from(document.querySelectorAll('.ds-checkbox:checked')).map(cb => cb.value);
-
-        tableau.extensions.settings.set(KEY_INTERVAL_SEC, seconds.toString());
-        tableau.extensions.settings.set(KEY_SELECTED_DS, JSON.stringify(selected));
-        tableau.extensions.settings.set(KEY_CONFIGURED, '1');
-
-        tableau.extensions.settings.saveAsync().then(() => {
-          tableau.extensions.ui.closeDialog("saved");
-        });
-      });
-
-      document.getElementById('cancelBtn').addEventListener('click', () => {
-        tableau.extensions.ui.closeDialog("cancelled");
       });
     });
   });
-
-  function escapeHtml(text) {
-    return text ? text.replace(/[&<>\"'`=\/]/g, s => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;',
-      '"': '&quot;', "'": '&#39;', '/': '&#x2F;'
-    })[s]) : '';
+  function parseSettingsForActiveDataSources() {
+    let activeDatasourceIdList = [];
+    let settings = tableau.extensions.settings.getAll();
+    if (settings.selectedDatasources) {
+      activeDatasourceIdList = JSON.parse(settings.selectedDatasources);
+    }
+    return activeDatasourceIdList;
+  }
+  function updateDatasourceList(id) {
+    let idIndex = selectedDatasources.indexOf(id);
+    if (idIndex < 0) {
+      selectedDatasources.push(id);
+    } else {
+      selectedDatasources.splice(idIndex, 1);
+    }
+  }
+  function addDataSourceItemToUI(datasource, isActive) {
+    let containerDiv = $('<div />');
+    $('<input />', {
+      type: 'checkbox',
+      id: datasource.id,
+      value: datasource.name,
+      checked: isActive,
+      click: function() { updateDatasourceList(datasource.id) }
+    }).appendTo(containerDiv);
+    $('<label />', {
+      'for': datasource.id,
+      text: datasource.name,
+    }).appendTo(containerDiv);
+    $('#datasources').append(containerDiv);
+  }
+  function closeDialog() {
+    let currentSettings = tableau.extensions.settings.getAll();
+    tableau.extensions.settings.set(datasourcesSettingsKey, JSON.stringify(selectedDatasources));
+    tableau.extensions.settings.set(intervalkey, $('#interval').val());
+    tableau.extensions.settings.set(configured, 1);
+    tableau.extensions.settings.saveAsync().then((newSavedSettings) => {
+    tableau.extensions.ui.closeDialog($('#interval').val());
+    });
   }
 })();
