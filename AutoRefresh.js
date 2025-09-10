@@ -35,8 +35,6 @@
         // 🔄 Refresh Tableau datasources
         triggerRefreshCycle();
 
-        // Restart loop
-        startTimer();
       } else {
         countdownEl.textContent = formatTime(remaining);
       }
@@ -44,7 +42,7 @@
 
     controls.style.display = "none"; // hide manual controls once active
     countdownEl.textContent = formatTime(refreshInterval);
-    resizeCountdown(); // scale font properly
+    resizeCountdown();
   }
 
   function stopTimer() {
@@ -56,19 +54,22 @@
 
   function triggerRefreshCycle() {
     if (!uniqueDataSources || uniqueDataSources.length === 0) {
+      console.warn("⚠️ No datasources found to refresh.");
       startTimer();
       return;
     }
 
+    console.log("🔄 Refreshing datasources:", uniqueDataSources.map(ds => ds.name));
+
     const refreshPromises = uniqueDataSources.map(ds =>
-      ds.refreshAsync().catch(err => {
-        console.warn(`Refresh failed: ${ds.name}`, err);
-      })
+      ds.refreshAsync()
+        .then(() => console.log(`✅ Refreshed: ${ds.name}`))
+        .catch(err => console.error(`❌ Refresh failed: ${ds.name}`, err))
     );
 
-    Promise.all(refreshPromises).then(() => {
-      console.log("Refresh cycle complete.");
-    });
+    Promise.all(refreshPromises)
+      .then(() => console.log("✨ Refresh cycle complete."))
+      .finally(() => startTimer());
   }
 
   // --- Manual Start ---
@@ -132,6 +133,11 @@
     }
 
     collectUniqueDataSources().then(() => {
+      if (uniqueDataSources.length === 0) {
+        console.error("❌ No datasources collected.");
+      } else {
+        console.log("✅ Collected datasources:", uniqueDataSources.map(d => d.name));
+      }
       startTimer();
     }).catch(err => {
       console.error('Error collecting datasources', err);
@@ -147,6 +153,7 @@
 
         const promises = dashboard.worksheets.map(ws =>
           ws.getDataSourcesAsync().then(dsList => {
+            console.log(`📊 Worksheet [${ws.name}] datasources:`, dsList.map(d => d.name));
             dsList.forEach(ds => {
               if (activeDatasourceIdList.length === 0 || activeDatasourceIdList.includes(ds.id)) {
                 if (!uniqueIds.has(ds.id)) {
@@ -170,7 +177,6 @@
     const circle = document.querySelector('.circle');
     const span = document.getElementById('countdown');
     if (!circle || !span) return;
-
     const circleWidth = circle.offsetWidth;
     span.style.fontSize = (circleWidth / 5) + 'px';
   }
