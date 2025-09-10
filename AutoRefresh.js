@@ -15,6 +15,72 @@
   const intervalInput = document.getElementById("interval");
   const startBtn = document.getElementById("startBtn");
 
+  // --- TIMER LOGIC ---
+  function formatTime(seconds) {
+    let mins = Math.floor(seconds / 60);
+    let secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+
+  function startTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    endTime = Date.now() + refreshInterval * 1000;
+
+    timerInterval = setInterval(() => {
+      let remaining = Math.floor((endTime - Date.now()) / 1000);
+
+      if (remaining <= 0) {
+        clearInterval(timerInterval);
+
+        // 🔄 Refresh Tableau datasources
+        triggerRefreshCycle();
+
+        // Restart loop
+        startTimer();
+      } else {
+        countdownEl.textContent = formatTime(remaining);
+      }
+    }, 1000);
+
+    controls.style.display = "none"; // hide manual controls once active
+    countdownEl.textContent = formatTime(refreshInterval);
+    resizeCountdown(); // scale font properly
+  }
+
+  function stopTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+
+  function triggerRefreshCycle() {
+    if (!uniqueDataSources || uniqueDataSources.length === 0) {
+      startTimer();
+      return;
+    }
+
+    const refreshPromises = uniqueDataSources.map(ds =>
+      ds.refreshAsync().catch(err => {
+        console.warn(`Refresh failed: ${ds.name}`, err);
+      })
+    );
+
+    Promise.all(refreshPromises).then(() => {
+      console.log("Refresh cycle complete.");
+    });
+  }
+
+  // --- Manual Start ---
+  if (startBtn) {
+    startBtn.addEventListener("click", () => {
+      let val = parseInt(intervalInput.value, 10);
+      if (!isNaN(val) && val > 0) refreshInterval = val;
+      startTimer();
+    });
+  }
+
+  // --- Tableau Initialization ---
   $(document).ready(function () {
     tableau.extensions.initializeAsync({ configure }).then(() => {
       tableau.extensions.settings.addEventListener(
@@ -27,8 +93,6 @@
       const configured = tableau.extensions.settings.get(KEY_CONFIGURED);
       if (configured === '1') {
         applySettingsAndStart(tableau.extensions.settings.getAll());
-      } else {
-        configure();
       }
     }).catch(err => {
       console.error('Initialize error', err);
@@ -101,69 +165,19 @@
     });
   }
 
-  // --- TIMER LOGIC ---
-  function formatTime(seconds) {
-    let mins = Math.floor(seconds / 60);
-    let secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  // --- Auto-resize countdown font ---
+  function resizeCountdown() {
+    const circle = document.querySelector('.circle');
+    const span = document.getElementById('countdown');
+    if (!circle || !span) return;
+
+    const circleWidth = circle.offsetWidth;
+    span.style.fontSize = (circleWidth / 5) + 'px';
   }
 
-  function startTimer() {
-    if (timerInterval) clearInterval(timerInterval);
-    endTime = Date.now() + refreshInterval * 1000;
+  window.addEventListener('resize', resizeCountdown);
+  window.addEventListener('load', resizeCountdown);
 
-    timerInterval = setInterval(() => {
-      let remaining = Math.floor((endTime - Date.now()) / 1000);
-
-      if (remaining <= 0) {
-        clearInterval(timerInterval);
-
-        // 🔄 Refresh Tableau datasources
-        triggerRefreshCycle();
-
-        // Restart loop
-        startTimer();
-      } else {
-        countdownEl.textContent = formatTime(remaining);
-      }
-    }, 1000);
-
-    controls.style.display = "none"; // hide manual controls once active
-    countdownEl.textContent = formatTime(refreshInterval);
-  }
-
-  function stopTimer() {
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
-  }
-
-  function triggerRefreshCycle() {
-    if (!uniqueDataSources || uniqueDataSources.length === 0) {
-      startTimer();
-      return;
-    }
-
-    const refreshPromises = uniqueDataSources.map(ds =>
-      ds.refreshAsync().catch(err => {
-        console.warn(`Refresh failed: ${ds.name}`, err);
-      })
-    );
-
-    Promise.all(refreshPromises).then(() => {
-      console.log("Refresh cycle complete.");
-    });
-  }
-
-  // Allow manual start if needed
-  if (startBtn) {
-    startBtn.addEventListener("click", () => {
-      let val = parseInt(intervalInput.value, 10);
-      if (!isNaN(val) && val > 0) refreshInterval = val;
-      startTimer();
-    });
-  }
-
+  // Expose configure
   window.AutoRefreshConfigure = configure;
 })();
