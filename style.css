@@ -4,8 +4,9 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #1e213f;
-  font-family: Arial, sans-serif;
+  background: #f9f9fb; /* light background */
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #333;
 }
 
 .container {
@@ -13,24 +14,24 @@ body {
 }
 
 .circle {
-  width: 40vw;              /* responsive */
-  max-width: 300px;         /* cap size */
-  aspect-ratio: 1 / 1;      /* keep circle shape */
+  width: 40vw;
+  max-width: 300px;
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
-  border: 6px solid #6c63ff;
+  border: 6px solid #0d6efd; /* professional blue */
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #151932;
-  box-shadow: 0px 0px 30px rgba(108, 99, 255, 0.6);
+  background: #fff; /* white inside */
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
   margin: 0 auto;
   padding: 10px;
 }
 
 .circle span {
-  font-size: clamp(1.5rem, 8vw, 3rem); /* responsive font */
-  font-weight: bold;
-  color: #d7e0ff;
+  font-size: clamp(1.5rem, 8vw, 3rem);
+  font-weight: 600;
+  color: #0d6efd; /* blue text */
   line-height: 1;
   text-align: center;
 }
@@ -42,22 +43,25 @@ body {
 input {
   width: 80px;
   padding: 6px;
-  border: none;
-  border-radius: 5px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
   text-align: center;
   margin-right: 10px;
+  font-size: 0.9rem;
 }
 
 button {
-  background: #6c63ff;
+  background: #0d6efd;
   color: white;
   border: none;
   padding: 6px 16px;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: background 0.2s ease;
 }
 
 button:hover {
-  background: #4e47d1;
+  background: #0b5ed7;
 }
