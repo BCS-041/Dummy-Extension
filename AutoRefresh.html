@@ -12,36 +12,42 @@
     <script src="./AutoRefresh.js"></script>
     <style>
       .timer-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        margin: 20px 0;
-      }
-      svg {
-        transform: rotate(-90deg);
-      }
-      .circle-bg {
-        fill: none;
-        stroke: #eee;
-        stroke-width: 8;
-      }
-      .circle {
-        fill: none;
-        stroke: #007bff;
-        stroke-width: 8;
-        stroke-linecap: round;
-        stroke-dasharray: 283;
-        stroke-dashoffset: 283;
-        transition: stroke-dashoffset 1s linear;
-      }
-      #timerText {
-        font-size: 20px;
-        font-weight: bold;
-        fill: #333;
-        text-anchor: middle;
-        dominant-baseline: middle;
-      }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+svg {
+  transform: rotate(-90deg); /* Make progress start from top */
+}
+
+.circle-bg {
+  fill: none;
+  stroke: #eee;
+  stroke-width: 10;
+}
+
+.circle {
+  fill: none;
+  stroke: #ff9800; /* orange instead of blue */
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-dasharray: 283;
+  stroke-dashoffset: 283;
+  transition: stroke-dashoffset 1s linear;
+}
+
+#timerText {
+  font-family: Arial, sans-serif;
+  font-size: 28px; /* bigger so visible */
+  font-weight: bold;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  fill: #333;
+  transform: rotate(0deg); /* counter-rotate text so it’s upright */
+}
     </style>
   </head>
   <body>
