@@ -46,73 +46,83 @@
   </head>
   <body>
     <div class="container"> 
-      <p id="mainContent">
-        <!-- Active Countdown -->
-        <div id="active" style="display: none; text-align: center;">
-          <div class="timer-container">
-            <svg width="120" height="120">
-              <circle class="circle-bg" cx="60" cy="60" r="45"></circle>
-              <circle class="circle" id="circle" cx="60" cy="60" r="45"></circle>
-              <text id="timerText" x="60" y="60">--</text>
-            </svg>
-          </div>
-        </div>
-
-        <!-- Inactive/Configure Message -->
-        <div id="inactive">
-          <table style="margin-bottom:0px">
-            <tbody>
-              <tr>
-                <td style="vertical-align:middle;">
-                  <img src="images.png" style="width: 30%; min-width: 150px;vertical-align: middle;">
-                </td>
-                <td style="text-align: right;vertical-align:middle;">
-                  <img src="logo.png" alt="Tableau" style="width: 28%; min-width: 120px;">
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <p>Configure extension to proceed.</p>
-        </div>
-      </p>
+  <!-- Active Countdown -->
+  <div id="active" style="display:none; text-align: center;">
+    <div class="timer-container">
+      <svg width="160" height="160">
+        <defs>
+          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#f07923"/>
+            <stop offset="100%" stop-color="#ffb347"/>
+          </linearGradient>
+        </defs>
+        <circle class="circle-bg" cx="80" cy="80" r="70"></circle>
+        <circle class="circle" id="circle" cx="80" cy="80" r="70"></circle>
+        <text id="timerText" x="80" y="80">--</text>
+      </svg>
     </div>
+  </div>
 
-    <script>
-      let countdownInterval; // store setInterval reference
+  <!-- Inactive/Configure Message -->
+  <div id="inactive">
+    <table style="margin-bottom:0px">
+      <tbody>
+        <tr>
+          <td style="vertical-align:middle;">
+            <img src="images.png" style="width: 30%; min-width: 150px;vertical-align: middle;">
+          </td>
+          <td style="text-align: right;vertical-align:middle;">
+            <img src="logo.png" alt="Tableau" style="width: 28%; min-width: 120px;">
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Configure extension to proceed.</p>
+  </div>
+</div>
 
-      function startCountdown(seconds) {
-        const circle = document.getElementById("circle");
-        const text = document.getElementById("timerText");
-        const radius = circle.r.baseVal.value;
-        const circumference = 2 * Math.PI * radius;
+<script>
+  let countdownInterval;
 
-        circle.style.strokeDasharray = `${circumference}`;
-        circle.style.strokeDashoffset = `${circumference}`; // reset
-        let remaining = seconds;
+  function startCountdown(seconds) {
+    // switch from inactive to active
+    $("#inactive").hide();
+    $("#active").show();
 
-        // Clear any existing interval
-        if(countdownInterval) clearInterval(countdownInterval);
+    const circle = document.getElementById("circle");
+    const text = document.getElementById("timerText");
+    const radius = circle.r.baseVal.value;
+    const circumference = 2 * Math.PI * radius;
 
-        function updateRing() {
-          const offset = circumference - (remaining / seconds) * circumference;
-          circle.style.strokeDashoffset = offset;
-          text.textContent = remaining + "s";
-          remaining--;
+    circle.style.strokeDasharray = `${circumference}`;
+    let remaining = seconds;
 
-          if (remaining < 0) {
-            clearInterval(countdownInterval);
-            text.textContent = "0s";
-            circle.style.strokeDashoffset = 0;
-          }
-        }
+    if (countdownInterval) clearInterval(countdownInterval);
 
-        updateRing(); // initial draw
-        countdownInterval = setInterval(updateRing, 1000);
+    function updateRing() {
+      const offset = circumference - (remaining / seconds) * circumference;
+      circle.style.strokeDashoffset = offset;
+      text.textContent = formatTime(remaining);
+      remaining--;
+
+      if (remaining < 0) {
+        clearInterval(countdownInterval);
+        // restart loop
+        startCountdown(seconds);
       }
+    }
 
-      // Example usage: call startCountdown(userIntervalInSeconds)
-      // $("#active").show(); should also be called when user sets interval
-    </script>
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${s.toString().padStart(2,"0")}`;
+    }
+
+    updateRing();
+    countdownInterval = setInterval(updateRing, 1000);
+  }
+</script>
+
   </body>
 </html>
 
