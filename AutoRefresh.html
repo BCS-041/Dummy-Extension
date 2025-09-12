@@ -24,7 +24,7 @@
         height: 100%;
         max-width: 100%;
         max-height: 100%;
-        transform: rotate(-90deg); /* Start progress from top */
+        transform: rotate(-90deg); /* Rotate circle so progress starts at top */
       }
 
       .circle-bg {
@@ -110,10 +110,13 @@
           c.setAttribute("stroke-width", stroke);
         });
 
-        // font size ~ 25% of container
+        // font size smaller (~15% of container size)
         text.setAttribute("x", size / 2);
-        text.setAttribute("y", size / 2 + size * 0.08);
-        text.setAttribute("font-size", size * 0.25);
+        text.setAttribute("y", size / 2);
+        text.setAttribute("font-size", size * 0.15);
+
+        // counter-rotate text to stay upright
+        text.setAttribute("transform", `rotate(90, ${size/2}, ${size/2})`);
 
         svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
       }
