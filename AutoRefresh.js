@@ -154,4 +154,44 @@
 
     setupRefreshInterval(interval);
   }
+  // ---------------------------
+// Countdown UI (circular timer)
+// ---------------------------
+window.startTimer = function(seconds) {
+  const circle = document.getElementById("circle");
+  const text = document.getElementById("timerText");
+  if (!circle || !text) return; // safeguard if UI not rendered
+
+  const radius = circle.r.baseVal.value;
+  const circumference = 2 * Math.PI * radius;
+
+  circle.style.strokeDasharray = circumference;
+  circle.style.strokeDashoffset = circumference;
+
+  let remaining = seconds;
+  if (window.countdownInterval) clearInterval(window.countdownInterval);
+
+  function updateRing() {
+    const offset = circumference - (remaining / seconds) * circumference;
+    circle.style.strokeDashoffset = offset;
+    text.textContent = formatTime(remaining);
+    remaining--;
+
+    if (remaining < 0) {
+      clearInterval(window.countdownInterval);
+      // restart automatically
+      window.startTimer(seconds);
+    }
+  }
+
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  updateRing();
+  window.countdownInterval = setInterval(updateRing, 1000);
+};
+
 })();
