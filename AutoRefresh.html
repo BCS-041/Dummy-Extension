@@ -6,97 +6,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Settings Sample</title>
     <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" >
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" ></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script src="../../lib/tableau.extensions.1.latest.js"></script>
     <script src="./AutoRefresh.js"></script>
-
-    <!-- STYLE -->
-     <style>
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f8f9fa;
-    color: #333;
-    margin: 0;
-    padding: 0;
-  }
-
-  .container {
-    max-width: 700px;
-    margin: 50px auto;
-    padding: 30px 40px;
-    background-color: #fff;
-    border-radius: 12px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-  }
-
-  table img {
-    max-width: 100%;
-    height: auto;
-  }
-
-  #inactive p {
-    color: #6c757d;
-    font-size: 16px;
-    margin-top: 15px;
-  }
-
-  #active p {
-    font-size: 16px;
-    margin-bottom: 10px;
-    color: #212529;
-  }
-
-  #active b {
-    color: #007bff;
-  }
-
-  /* Timer / countdown style */
-  #nextrefresh {
-    font-family: 'Courier New', Courier, monospace;
-    background-color: #e9ecef;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-weight: bold;
-    color: #495057;
-  }
-
-  #datasourceCount, #interval, #uniqueCount {
-    background-color: #e9ecef;
-    padding: 2px 6px;
-    border-radius: 6px;
-    font-weight: bold;
-    color: #495057;
-  }
-
-  p span {
-    display: inline-block;
-    min-width: 40px;
-    text-align: center;
-  }
-
-  /* Smooth transition when showing/hiding active/inactive */
-  #active, #inactive {
-    transition: all 0.3s ease;
-  }
-
-  /* Images responsive */
-  @media(max-width: 480px) {
-    table td img {
-      width: 45%;
-    }
-  }
-</style>
-
-    <!-- STYLE -->
+    <style>
+      .timer-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 20px 0;
+      }
+      svg {
+        transform: rotate(-90deg);
+      }
+      .circle-bg {
+        fill: none;
+        stroke: #eee;
+        stroke-width: 8;
+      }
+      .circle {
+        fill: none;
+        stroke: #007bff;
+        stroke-width: 8;
+        stroke-linecap: round;
+        stroke-dasharray: 283;
+        stroke-dashoffset: 283;
+        transition: stroke-dashoffset 1s linear;
+      }
+      #timerText {
+        font-size: 20px;
+        font-weight: bold;
+        fill: #333;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+    </style>
   </head>
   <body>
     <div class="container">
       <p id="mainContent">
-        <div id="active" style="display: none;">
-          <p>Refreshing <b><span id="datasourceCount">0</span></b> datasource(s) every <b><span id="interval">5</span></b> seconds. Next refresh at <b><span id="nextrefresh">12:00:00</span></b></p>
-          <p>Unique datasources <span id="uniqueCount">0</span></p>
+        <!-- Active Countdown -->
+        <div id="active" style="display: none; text-align: center;">
+          <div class="timer-container">
+            <svg width="120" height="120">
+              <circle class="circle-bg" cx="60" cy="60" r="45"></circle>
+              <circle class="circle" id="circle" cx="60" cy="60" r="45"></circle>
+              <text id="timerText" x="60" y="60">--</text>
+            </svg>
+          </div>
         </div>
+
+        <!-- Inactive/Configure Message -->
         <div id="inactive">
           <table style="margin-bottom:0px">
             <tbody>
@@ -105,14 +67,52 @@
                   <img src="images.png" style="width: 30%; min-width: 150px;vertical-align: middle;">
                 </td>
                 <td style="text-align: right;vertical-align:middle;">
-                  <img src="logo prosperitas.png" alt="Tableau" style="width: 28%; min-width: 120px;">
+                  <img src="logo.png" alt="Tableau" style="width: 28%; min-width: 120px;">
                 </td>
               </tr>
             </tbody>
           </table>
-            <p>Configure extension to proceed.</p>
+          <p>Configure extension to proceed.</p>
         </div>
       </p>
     </div>
+
+    <script>
+      let countdownInterval; // store setInterval reference
+
+      function startCountdown(seconds) {
+        const circle = document.getElementById("circle");
+        const text = document.getElementById("timerText");
+        const radius = circle.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+
+        circle.style.strokeDasharray = `${circumference}`;
+        circle.style.strokeDashoffset = `${circumference}`; // reset
+        let remaining = seconds;
+
+        // Clear any existing interval
+        if(countdownInterval) clearInterval(countdownInterval);
+
+        function updateRing() {
+          const offset = circumference - (remaining / seconds) * circumference;
+          circle.style.strokeDashoffset = offset;
+          text.textContent = remaining + "s";
+          remaining--;
+
+          if (remaining < 0) {
+            clearInterval(countdownInterval);
+            text.textContent = "0s";
+            circle.style.strokeDashoffset = 0;
+          }
+        }
+
+        updateRing(); // initial draw
+        countdownInterval = setInterval(updateRing, 1000);
+      }
+
+      // Example usage: call startCountdown(userIntervalInSeconds)
+      // $("#active").show(); should also be called when user sets interval
+    </script>
   </body>
 </html>
+
