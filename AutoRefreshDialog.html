@@ -106,25 +106,28 @@
   <body>
     <div class="container">
 
-      <!-- Logo fixed to top-right -->
-      <img src="images.png" alt="Logo" class="logo">
+  <!-- Logo pinned to top-right -->
+  <img src="images.png" alt="Logo" class="logo">
 
-      <!-- Title and description -->
-      <h4>Auto Data Source Refresh</h4>
-      <p>Your datasource will be refreshed at selected time interval.</p>
-      <hr />
+  <!-- Content starts below logo -->
+  <div class="content">
+    <h4>Auto Data Source Refresh</h4>
+    <p>Your datasource will be refreshed at selected time interval.</p>
+    <hr />
 
-      <!-- Datasources section -->
-      <h5>Select datasources: </h5>
-      <div id="datasources"></div>
+    <!-- Datasources section -->
+    <h5>Select datasources: </h5>
+    <div id="datasources"></div>
 
-      <!-- Interval input -->
-      <h5>Refresh interval (seconds):</h5>
-      <input type="number" id="interval" name="quantity" min="15" max="3600">
-      <hr />
+    <!-- Interval input -->
+    <h5>Refresh interval (seconds):</h5>
+    <input type="number" id="interval" name="quantity" min="15" max="3600">
+    <hr />
 
-      <!-- Button -->
-      <button id="closeButton">Start</button>
-    </div>
+    <!-- Button -->
+    <button id="closeButton">Start</button>
+  </div>
+</div>
+
   </body>
 </html>
