@@ -52,7 +52,7 @@
   // Configure dialog
   // ---------------------------
   function configure() {
-    const popupUrl = `${window.location.origin}/AutoRefreshDialog.html`; // works with GitHub Pages hosting
+    const popupUrl = `${window.location.origin}/AutoRefreshDialog_v1.html`; // works with GitHub Pages hosting
     const currentInterval = tableau.extensions.settings.get(SETTINGS_KEY_INTERVAL) || DEFAULT_INTERVAL_SECONDS;
 
     console.log("Opening configuration dialog:", popupUrl);
