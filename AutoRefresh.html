@@ -12,15 +12,19 @@
     <script src="./AutoRefresh.js"></script>
     <style>
       .timer-container {
+  width: 100%;
+  height: 100%;
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  margin: 20px 0;
+  align-items: center;
 }
 
 svg {
-  transform: rotate(-90deg); /* Make progress start from top */
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  transform: rotate(-90deg); /* Start progress from top */
 }
 
 .circle-bg {
@@ -41,12 +45,11 @@ svg {
 
 #timerText {
   font-family: Arial, sans-serif;
-  font-size: 25px; /* bigger so visible */
+  font-size: 20%; /* bigger so visible */
   font-weight: bold;
   text-anchor: middle;
   dominant-baseline: middle;
   fill: #333;
-  transform: rotate(0deg); /* counter-rotate text so it’s upright */
 }
     </style>
   </head>
