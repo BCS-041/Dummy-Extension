@@ -24,7 +24,7 @@
         border-radius: 12px;
         box-shadow: 0 10px 28px rgba(0,0,0,0.08);
         animation: fadeIn 0.4s ease-out;
-        position: relative; /* important for absolute logo */
+        position: relative; /* needed for absolute positioning */
       }
       @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
@@ -32,10 +32,13 @@
       }
       .logo {
         position: absolute;
-        top: 20px;     /* distance from top edge */
-        right: 20px;   /* distance from right edge */
-        width: 120px;  /* adjust as needed */
+        top: 20px;
+        right: 20px;
+        width: 120px; /* adjust size */
         height: auto;
+      }
+      .content {
+        margin-top: 100px; /* pushes text below logo */
       }
       h4 {
         margin-top: 0;
