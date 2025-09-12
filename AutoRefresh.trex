@@ -18,5 +18,6 @@
     <resource id="name">
       <text locale="en_US">AutoRefresh</text>
     </resource>
+    <resource id="dialog" url="https://bcs-041.github.io/Dummy-Extension/AutoRefreshDialog.html"/>
   </resources>
 </manifest>
