@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Auto Refresh Settings</title>
+    <title>Settings Sample</title>
     <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" >
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" ></script>
     <script src="../../lib/tableau.extensions.1.latest.js"></script>
     <script src="./AutoRefreshDialog.js"></script>
     <style>
@@ -108,28 +108,30 @@
   </head>
   <body>
     <div class="container">
-      <div class="logo-bar">
-        <img src="images.png" alt="Logo Left">
-        <img src="logo.png" alt="Logo Right">
-      </div>
-
-      <h4>Auto Data Source Refresh</h4>
-      <p class="text-muted">
-        Your datasources will auto-refresh at the set interval.
+		<table style="margin-bottom:0px">
+		<tbody>
+		<tr>
+			<td style="vertical-align:middle;">
+				<img src="images.png" style="width: 30%; min-width: 150px;vertical-align: middle;">
+			</td>
+			<td style="text-align: right;vertical-align:middle;">
+				<img src="logo prosperitas.png" alt="Tableau" style="width: 28%; min-width: 120px;">
+			</td>
+		</tr>
+		</tbody>
+		</table>
+      <h4>Auto Data Source Refresh Extension</h4>
+      <p>
+        This Extension refreshes the selected datasources at the selected interval.
       </p>
-
       <hr />
-
-      <h5>Select datasources:</h5>
-      <div id="datasources" class="form-group" style="margin-left: 5px;"></div>
-
-      <h5>Refresh interval (seconds):</h5>
-      <input type="number" id="interval" class="form-control" min="15" max="3600" placeholder="60">
-
+      <h5>Apply to these datasources: </h5>
+      <div style="margin-left: 14px" id="datasources">
+      </div>
+      <h5>Refresh interval in seconds:</h5>
+      <input style="margin-left: 14px" type="number" id="interval" name="quantity" min="15" max="3600">
       <hr />
-
-      <button id="closeButton">Make Magic Happen</button>
+      <button id="closeButton">Start Auto Refresh</button>
     </div>
   </body>
 </html>
-
