@@ -27,21 +27,15 @@ svg {
   transform: rotate(-90deg); /* Start progress from top */
 }
 
-.circle-bg {
-  fill: none;
-  stroke: #eee;
-  stroke-width: 10;
-}
-
+.circle-bg,
 .circle {
   fill: none;
-  stroke: url(#grad); /* use gradient instead of solid color */
-  stroke-width: 10;
   stroke-linecap: round;
   stroke-dasharray: 440;
   stroke-dashoffset: 440;
   transition: stroke-dashoffset 1s linear;
 }
+
 
 #timerText {
   font-family: Arial, sans-serif;
