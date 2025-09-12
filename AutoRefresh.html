@@ -5,32 +5,19 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Settings Sample</title>
+
+    <!-- External Libraries -->
     <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script src="../../lib/tableau.extensions.1.latest.js"></script>
     <script src="./AutoRefresh.js"></script>
+
+    <!-- Styles -->
     <style>
-      body {
-        font-family: Arial, sans-serif;
-      }
-
-      /* Logo (only visible in inactive mode) */
-      .logo {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 120px;
-      }
-
-      .content {
-        padding-top: 70px; /* spacing below logo */
-        text-align: center;
-      }
-
       .timer-container {
-        width: 100%;
-        height: 70vh; /* keep room for margins */
+        width: 100vw;
+        height: 100vh;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -42,7 +29,7 @@
         height: 100%;
         max-width: 100%;
         max-height: 100%;
-        transform: rotate(-90deg); /* start at top */
+        transform: rotate(-90deg); /* Rotate circle so progress starts at top */
       }
 
       .circle-bg {
@@ -54,7 +41,7 @@
         fill: none;
         stroke: url(#grad);
         stroke-linecap: round;
-        transition: stroke-dashoffset 0.2s linear;
+        transition: stroke-dashoffset 0.2s linear; /* smoother */
       }
 
       #timerText {
@@ -64,21 +51,26 @@
         dominant-baseline: middle;
         fill: #333;
       }
+      .fixed-logo {
+        position: fixed;
+        top: 20px;       /* distance from top */
+        right: 20px;     /* distance from right edge */
+        width: 28%;
+        min-width: 120px;
+      }
     </style>
   </head>
-  <body>
-    <!-- Logo (only for inactive state) -->
-    <img src="images.png" alt="LSL" class="logo" id="logo">
 
-    <div class="content">
+  <body>
+    <div>
       <!-- Active Countdown -->
-      <div id="active" style="display:none;">
+      <div id="active" style="display:none; text-align: center;">
         <div class="timer-container">
           <svg class="timer-svg" preserveAspectRatio="xMidYMid meet">
             <defs>
               <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#f07923"/>
-                <stop offset="100%" stop-color="#ffb347"/>
+                <stop offset="0%" stop-color="#f07923" />
+                <stop offset="100%" stop-color="#ffb347" />
               </linearGradient>
             </defs>
             <circle class="circle-bg"></circle>
@@ -90,10 +82,20 @@
 
       <!-- Inactive/Configure Message -->
       <div id="inactive">
+        <table style="margin-bottom:0px">
+          <tbody>
+            <tr>
+              <td>
+                <img src="images.png" alt="LSL" class="fixed-logo">
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <p>Configure extension to proceed.</p>
       </div>
     </div>
 
+    <!-- Script -->
     <script>
       let countdownInterval;
 
@@ -108,6 +110,7 @@
         const box = svg.getBoundingClientRect();
         const size = Math.min(box.width, box.height);
 
+        // radius & stroke
         const stroke = Math.max(2, size * 0.07);
         const r = (size / 2) - stroke * 2;
 
@@ -118,10 +121,13 @@
           c.setAttribute("stroke-width", stroke);
         });
 
+        // font size smaller (~15% of container size)
         text.setAttribute("x", size / 2);
         text.setAttribute("y", size / 2);
         text.setAttribute("font-size", size * 0.15);
-        text.setAttribute("transform", `rotate(90, ${size/2}, ${size/2})`);
+
+        // counter-rotate text to stay upright
+        text.setAttribute("transform", `rotate(90, ${size / 2}, ${size / 2})`);
 
         svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
       }
@@ -129,31 +135,32 @@
       window.addEventListener("resize", resizeTimer);
       window.addEventListener("load", resizeTimer);
 
-      // Start the countdown timer
       function startCountdown(seconds) {
         $("#inactive").hide();
         $("#active").show();
-        $("#logo").hide();   // hide logo when timer starts
 
         const circle = document.getElementById("circle");
         const text = document.getElementById("timerText");
 
         const radius = circle.r.baseVal.value;
         const circumference = 2 * Math.PI * radius;
+
         circle.style.strokeDasharray = `${circumference}`;
 
         let remaining = seconds;
+
         if (countdownInterval) clearInterval(countdownInterval);
 
         function updateRing() {
           const offset = circumference - (remaining / seconds) * circumference;
           circle.style.strokeDashoffset = offset;
           text.textContent = formatTime(remaining);
+
           remaining--;
 
           if (remaining < 0) {
             clearInterval(countdownInterval);
-            startCountdown(seconds); // restart automatically
+            startCountdown(seconds); // restart loop
           }
         }
 
@@ -165,13 +172,6 @@
 
         updateRing();
         countdownInterval = setInterval(updateRing, 1000);
-      }
-
-      // Switch back to inactive mode
-      function showInactive() {
-        $("#active").hide();
-        $("#inactive").show();
-        $("#logo").show();   // show logo again
       }
     </script>
   </body>
