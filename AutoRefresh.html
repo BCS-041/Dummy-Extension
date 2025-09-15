@@ -55,8 +55,8 @@
         position: fixed;
         top: 20px;       /* distance from top */
         right: 20px;     /* distance from right edge */
-        width: 28%;
-        min-width: 120px;
+        width: 120px;
+        height: auto;
       }
     </style>
   </head>
@@ -81,19 +81,12 @@
       </div>
 
       <!-- Inactive/Configure Message -->
-      <div id="inactive">
-        <table style="margin-bottom:0px">
-          <tbody>
-            <tr>
-              <td>
-                <img src="images.png" alt="LSL" class="fixed-logo">
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p>Configure extension to proceed.</p>
+      <div id="inactive" style="text-align: center; font-family: Arial, sans-serif; margin-top: 90px;">
+        <img src="images.png" alt="LSL" class="fixed-logo">          
+        <p style="margin-top: 20px; font-size: 16px; color: #333;">
+          Configure extension to proceed.
+        </p>
       </div>
-    </div>
 
     <!-- Script -->
     <script>
