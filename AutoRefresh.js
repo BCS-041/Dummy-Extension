@@ -1,197 +1,123 @@
 'use strict';
-(function () {
-  const DEFAULT_INTERVAL_SECONDS = 60;  // default 1 min
+(function(){
+  const DEFAULT_INTERVAL_SECONDS = 60;
   const SETTINGS_KEY_DATASOURCES = 'selectedDatasources';
   const SETTINGS_KEY_INTERVAL = 'intervalkey';
   const SETTINGS_KEY_CONFIGURED = 'configured';
 
-  let refreshInterval = null;
+  let refreshTimeout = null;
   let activeDatasourceIdList = [];
   let uniqueDataSources = [];
 
-  $(document).ready(function () {
-    tableau.extensions.initializeAsync({ configure }).then(() => {
+  $(document).ready(function(){
+    tableau.extensions.initializeAsync({configure}).then(()=>{
       loadSettings();
-
       tableau.extensions.settings.addEventListener(
         tableau.TableauEventType.SettingsChanged,
-        (event) => {
-          updateFromSettings(event.newSettings);
-        }
+        (event) => updateFromSettings(event.newSettings)
       );
 
-      // If never configured → open dialog
-      if (tableau.extensions.settings.get(SETTINGS_KEY_CONFIGURED) !== "1") {
+      if(tableau.extensions.settings.get(SETTINGS_KEY_CONFIGURED)!=="1"){
         configure();
       }
     });
   });
 
-  // ---------------------------
-  // Load saved settings
-  // ---------------------------
-  function loadSettings() {
+  function loadSettings(){
     const settings = tableau.extensions.settings.getAll();
-
-    if (settings[SETTINGS_KEY_DATASOURCES]) {
+    if(settings[SETTINGS_KEY_DATASOURCES]){
       activeDatasourceIdList = JSON.parse(settings[SETTINGS_KEY_DATASOURCES]);
     }
-
-    const interval = settings[SETTINGS_KEY_INTERVAL]
-      ? parseInt(settings[SETTINGS_KEY_INTERVAL], 10)
-      : DEFAULT_INTERVAL_SECONDS;
-
-    if (activeDatasourceIdList.length > 0) {
+    const interval = settings[SETTINGS_KEY_INTERVAL]?parseInt(settings[SETTINGS_KEY_INTERVAL],10):DEFAULT_INTERVAL_SECONDS;
+    if(activeDatasourceIdList.length>0){
       $('#inactive').hide();
       $('#active').show();
-      setupRefreshInterval(interval);
+      setupRefreshLogic(interval);
     }
   }
 
-  // ---------------------------
-  // Configure dialog
-  // ---------------------------
-  function configure() {
-    const popupUrl = `${window.location.origin}/AutoRefreshDialog.html`; // works with GitHub Pages hosting
+  function configure(){
+    const popupUrl = `${window.location.origin}/AutoRefreshDialog.html`;
     const currentInterval = tableau.extensions.settings.get(SETTINGS_KEY_INTERVAL) || DEFAULT_INTERVAL_SECONDS;
 
-    console.log("Opening configuration dialog:", popupUrl);
-
-    tableau.extensions.ui.displayDialogAsync(
-      popupUrl,
-      currentInterval.toString(),
-      { height: 500, width: 500 }
-    )
-    .then((newInterval) => {
-      console.log("Dialog closed with interval:", newInterval);
-
-      $('#inactive').hide();
-      $('#active').show();
-
-      setupRefreshInterval(parseInt(newInterval, 10));
-    })
-    .catch((error) => {
-      if (error.errorCode === tableau.ErrorCodes.DialogClosedByUser) {
-        console.log("Dialog was closed by user");
-      } else {
-        console.error("Dialog error:", error.message);
-      }
-    });
+    tableau.extensions.ui.displayDialogAsync(popupUrl,currentInterval.toString(),{height:500,width:500})
+      .then((newInterval)=>{
+        $('#inactive').hide();
+        $('#active').show();
+        setupRefreshLogic(parseInt(newInterval,10));
+      })
+      .catch((error)=>{
+        if(error.errorCode!==tableau.ErrorCodes.DialogClosedByUser){
+          console.error("Dialog error:", error.message);
+        }
+      });
   }
 
-  // ---------------------------
-  // Setup refresh interval
-  // ---------------------------
-  function setupRefreshInterval(intervalSeconds) {
-    if (refreshInterval) {
-      clearTimeout(refreshInterval);
-    }
+  function setupRefreshLogic(intervalSeconds){
+    if(refreshTimeout) clearTimeout(refreshTimeout);
 
-    // Start circular timer in UI if available
-    if (typeof window.startTimer === "function") {
-      window.startTimer(intervalSeconds);
-    }
-
-    function collectUniqueDataSources() {
+    function collectUniqueDataSources(){
       const dashboard = tableau.extensions.dashboardContent.dashboard;
       const seen = new Set();
-      uniqueDataSources = [];
-
-      const promises = dashboard.worksheets.map((worksheet) =>
-        worksheet.getDataSourcesAsync().then((datasources) => {
-          datasources.forEach((ds) => {
-            if (!seen.has(ds.id) && activeDatasourceIdList.includes(ds.id)) {
+      uniqueDataSources=[];
+      const promises = dashboard.worksheets.map(ws =>
+        ws.getDataSourcesAsync().then(dsList=>{
+          dsList.forEach(ds=>{
+            if(!seen.has(ds.id) && activeDatasourceIdList.includes(ds.id)){
               seen.add(ds.id);
               uniqueDataSources.push(ds);
             }
           });
         })
       );
-
       return Promise.all(promises);
     }
 
-    function executeRefresh() {
-      if (uniqueDataSources.length === 0) {
-        console.warn("⚠️ No matching datasources to refresh.");
-        scheduleNext();
+    function executeRefresh(){
+      if(uniqueDataSources.length===0){
+        console.warn("No datasources selected.");
+        scheduleNextRefresh();
         return;
       }
 
-      const promises = uniqueDataSources.map((ds) => ds.refreshAsync());
+      const promises = uniqueDataSources.map(ds=>ds.refreshAsync());
 
       Promise.all(promises)
-        .then(() => {
-          console.log(`✅ Refreshed ${uniqueDataSources.length} datasource(s).`);
-          scheduleNext();
+        .then(()=>{
+          console.log("Refresh done.");
+          if(typeof window.startTimer==="function") window.startTimer(intervalSeconds);
+          if(typeof window.triggerPulse==="function") window.triggerPulse();
+          scheduleNextRefresh();
         })
-        .catch((err) => {
-          console.error("❌ Refresh failed:", err);
-          scheduleNext();
+        .catch(err=>{
+          console.error("Refresh failed:",err);
+          if(typeof window.startTimer==="function") window.startTimer(intervalSeconds);
+          if(typeof window.triggerPulse==="function") window.triggerPulse();
+          scheduleNextRefresh();
         });
     }
 
-    function scheduleNext() {
-      refreshInterval = setTimeout(executeRefresh, intervalSeconds * 1000);
+    function scheduleNextRefresh(){
+      refreshTimeout = setTimeout(executeRefresh, intervalSeconds*1000);
     }
 
-    collectUniqueDataSources().then(() => {
-      executeRefresh();
-    });
+    collectUniqueDataSources().then(()=>executeRefresh());
   }
 
-  // ---------------------------
-  // Update when settings change
-  // ---------------------------
-  function updateFromSettings(settings) {
-    if (settings[SETTINGS_KEY_DATASOURCES]) {
+  function updateFromSettings(settings){
+    if(settings[SETTINGS_KEY_DATASOURCES]){
       activeDatasourceIdList = JSON.parse(settings[SETTINGS_KEY_DATASOURCES]);
     }
-
-    const interval = settings[SETTINGS_KEY_INTERVAL]
-      ? parseInt(settings[SETTINGS_KEY_INTERVAL], 10)
-      : DEFAULT_INTERVAL_SECONDS;
-
-    setupRefreshInterval(interval);
-  }
-  // ---------------------------
-// Countdown UI (circular timer)
-// ---------------------------
-window.startTimer = function(seconds) {
-  const circle = document.getElementById("circle");
-  const text = document.getElementById("timerText");
-  if (!circle || !text) return; // safeguard if UI not rendered
-
-  const radius = circle.r.baseVal.value;
-  const circumference = 2 * Math.PI * radius;
-
-  circle.style.strokeDasharray = circumference;
-  circle.style.strokeDashoffset = circumference;
-
-  let remaining = seconds;
-  if (window.countdownInterval) clearInterval(window.countdownInterval);
-
-  function updateRing() {
-    const offset = circumference - (remaining / seconds) * circumference;
-    circle.style.strokeDashoffset = offset;
-    text.textContent = formatTime(remaining);
-    remaining--;
-
-    if (remaining < 0) {
-      clearInterval(window.countdownInterval);
-      // restart automatically
-      window.startTimer(seconds);
+    const interval = settings[SETTINGS_KEY_INTERVAL]?parseInt(settings[SETTINGS_KEY_INTERVAL],10):DEFAULT_INTERVAL_SECONDS;
+    if(activeDatasourceIdList.length>0){
+      $('#inactive').hide();
+      $('#active').show();
+      setupRefreshLogic(interval);
+    } else {
+      if(refreshTimeout) clearTimeout(refreshTimeout);
+      $('#active').hide();
+      $('#inactive').show();
     }
   }
-
-  function formatTime(sec) {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  }
-
-  updateRing();
-  window.countdownInterval = setInterval(updateRing, 1000);
-};
 
 })();
