@@ -1,171 +1,152 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Settings Sample</title>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scheduled Auto Refresh</title>
 
-    <!-- External Libraries -->
-    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-    <script src="../../lib/tableau.extensions.1.latest.js"></script>
-    <script src="./AutoRefresh.js"></script>
+  <!-- Dependencies -->
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="../../lib/tableau.extensions.1.latest.js"></script>
+  <script src="./AutoRefresh.js"></script>
 
-    <!-- Styles -->
-    <style>
-      .timer-container {
-        width: 100vw;
-        height: 100vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: hidden;
-      }
+  <style>
+    body { margin:0; background:#fff; }
+    .timer-container { width:100vw; height:100vh; display:flex; justify-content:center; align-items:center; overflow:hidden; }
+    svg.timer-svg { width:100%; height:100%; max-width:100%; max-height:100%; transform:rotate(-90deg); }
+    .circle-bg { fill:none; stroke:#eee; }
+    .circle { fill:none; stroke: url(#grad); stroke-linecap:round; }
+    #timerText { font-family:Arial, sans-serif; font-weight:bold; text-anchor:middle; dominant-baseline:middle; fill:#333; }
+    .fixed-logo { position: fixed; top:20px; right:20px; width:120px; height:auto; }
 
-      svg.timer-svg {
-        width: 100%;
-        height: 100%;
-        max-width: 100%;
-        max-height: 100%;
-        transform: rotate(-90deg); /* Rotate circle so progress starts at top */
-      }
+    /* Glow/pulse effect */
+    @keyframes pulse {
+      0% { stroke-width: var(--stroke); opacity: 1; }
+      50% { stroke-width: calc(var(--stroke) + 10); opacity: 0.6; }
+      100% { stroke-width: var(--stroke); opacity: 1; }
+    }
+    .pulse { animation: pulse 0.6s ease-out; }
+  </style>
+</head>
 
-      .circle-bg {
-        fill: none;
-        stroke: #eee;
-      }
-
-      .circle {
-        fill: none;
-        stroke: url(#grad);
-        stroke-linecap: round;
-        transition: stroke-dashoffset 0.2s linear; /* smoother */
-      }
-
-      #timerText {
-        font-family: Arial, sans-serif;
-        font-weight: bold;
-        text-anchor: middle;
-        dominant-baseline: middle;
-        fill: #333;
-      }
-      .fixed-logo {
-        position: fixed;
-        top: 20px;       /* distance from top */
-        right: 20px;     /* distance from right edge */
-        width: 120px;
-        height: auto;
-      }
-    </style>
-  </head>
-
-  <body>
-    <div>
-      <!-- Active Countdown -->
-      <div id="active" style="display:none; text-align: center;">
-        <div class="timer-container">
-          <svg class="timer-svg" preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#f07923" />
-                <stop offset="100%" stop-color="#ffb347" />
-              </linearGradient>
-            </defs>
-            <circle class="circle-bg"></circle>
-            <circle class="circle" id="circle"></circle>
-            <text id="timerText">--</text>
-          </svg>
-        </div>
+<body>
+  <div>
+    <!-- Active Timer -->
+    <div id="active" style="display:none; text-align:center;">
+      <div class="timer-container">
+        <svg class="timer-svg" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#f07923" />
+              <stop offset="100%" stop-color="#ffb347" />
+            </linearGradient>
+          </defs>
+          <circle class="circle-bg"></circle>
+          <circle class="circle" id="circle"></circle>
+          <text id="timerText">--</text>
+        </svg>
       </div>
+    </div>
 
-      <!-- Inactive/Configure Message -->
-      <div id="inactive" style="text-align: center; font-family: Arial, sans-serif; margin-top: 90px;">
-        <img src="images.png" alt="LSL" class="fixed-logo">          
-        <p style="margin-top: 20px; font-size: 16px; color: #333;">
-          Configure extension to proceed.
-        </p>
-      </div>
+    <!-- Inactive State -->
+    <div id="inactive" style="text-align:center; font-family:Arial,sans-serif; margin-top:90px;">
+      <img src="images.png" alt="LSL" class="fixed-logo">
+      <p style="margin-top:20px; font-size:16px; color:#333;">Configure extension to proceed.</p>
+    </div>
+  </div>
 
-    <!-- Script -->
-    <script>
-      let countdownInterval;
+  <script>
+    let countdownTimeout;
+    let textTimeout;
 
-      function resizeTimer() {
-        const svg = document.querySelector(".timer-svg");
-        const text = document.getElementById("timerText");
-        const circle = document.getElementById("circle");
-        const bg = document.querySelector(".circle-bg");
+    function resizeTimer() {
+      const svg = document.querySelector(".timer-svg");
+      const text = document.getElementById("timerText");
+      const circle = document.getElementById("circle");
+      const bg = document.querySelector(".circle-bg");
+      if (!svg || !text || !circle || !bg) return;
 
-        if (!svg || !text || !circle || !bg) return;
+      const box = svg.getBoundingClientRect();
+      const size = Math.min(box.width, box.height);
+      const stroke = Math.max(2, size * 0.07);
+      const r = (size / 2) - stroke * 2;
 
-        const box = svg.getBoundingClientRect();
-        const size = Math.min(box.width, box.height);
+      [circle, bg].forEach(c => {
+        c.setAttribute("r", r);
+        c.setAttribute("cx", size/2);
+        c.setAttribute("cy", size/2);
+        c.setAttribute("stroke-width", stroke);
+      });
 
-        // radius & stroke
-        const stroke = Math.max(2, size * 0.07);
-        const r = (size / 2) - stroke * 2;
+      text.setAttribute("x", size/2);
+      text.setAttribute("y", size/2);
+      text.setAttribute("font-size", size*0.15);
+      text.setAttribute("transform", `rotate(90, ${size/2}, ${size/2})`);
+      svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
 
-        [circle, bg].forEach(c => {
-          c.setAttribute("r", r);
-          c.setAttribute("cx", size / 2);
-          c.setAttribute("cy", size / 2);
-          c.setAttribute("stroke-width", stroke);
-        });
+      // Store stroke for pulse animation
+      circle.style.setProperty('--stroke', stroke + 'px');
+    }
 
-        // font size smaller (~15% of container size)
-        text.setAttribute("x", size / 2);
-        text.setAttribute("y", size / 2);
-        text.setAttribute("font-size", size * 0.15);
+    window.addEventListener("resize", resizeTimer);
+    window.addEventListener("load", resizeTimer);
 
-        // counter-rotate text to stay upright
-        text.setAttribute("transform", `rotate(90, ${size / 2}, ${size / 2})`);
+    // Smooth countdown synced with refresh
+    window.startTimer = function(seconds){
+      $("#inactive").hide();
+      $("#active").show();
 
-        svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+      const circle = document.getElementById("circle");
+      const text = document.getElementById("timerText");
+      if(!circle || !text) return;
+
+      const radius = circle.r.baseVal.value;
+      const circumference = 2*Math.PI*radius;
+
+      circle.style.strokeDasharray = `${circumference}`;
+      circle.style.strokeDashoffset = `${circumference}`;
+
+      if(countdownTimeout) cancelAnimationFrame(countdownTimeout);
+      if(textTimeout) clearTimeout(textTimeout);
+
+      const startTime = performance.now();
+
+      function animateRing(now){
+        const elapsed = (now - startTime)/1000;
+        const remaining = Math.max(seconds - elapsed, 0);
+        circle.style.strokeDashoffset = (remaining/seconds)*circumference;
+        if(remaining>0){
+          countdownTimeout = requestAnimationFrame(animateRing);
+        }
       }
 
-      window.addEventListener("resize", resizeTimer);
-      window.addEventListener("load", resizeTimer);
-
-      function startCountdown(seconds) {
-        $("#inactive").hide();
-        $("#active").show();
-
-        const circle = document.getElementById("circle");
-        const text = document.getElementById("timerText");
-
-        const radius = circle.r.baseVal.value;
-        const circumference = 2 * Math.PI * radius;
-
-        circle.style.strokeDasharray = `${circumference}`;
-
-        let remaining = seconds;
-
-        if (countdownInterval) clearInterval(countdownInterval);
-
-        function updateRing() {
-          const offset = circumference - (remaining / seconds) * circumference;
-          circle.style.strokeDashoffset = offset;
-          text.textContent = formatTime(remaining);
-
-          remaining--;
-
-          if (remaining < 0) {
-            clearInterval(countdownInterval);
-            startCountdown(seconds); // restart loop
-          }
+      function updateText(sec){
+        text.textContent = formatTime(sec);
+        if(sec>0){
+          textTimeout = setTimeout(()=>updateText(sec-1),1000);
         }
-
-        function formatTime(sec) {
-          const m = Math.floor(sec / 60);
-          const s = sec % 60;
-          return `${m}:${s.toString().padStart(2, "0")}`;
-        }
-
-        updateRing();
-        countdownInterval = setInterval(updateRing, 1000);
       }
-    </script>
-  </body>
+
+      function formatTime(sec){
+        const m = Math.floor(sec/60);
+        const s = sec%60;
+        return `${m}:${s.toString().padStart(2,"0")}`;
+      }
+
+      requestAnimationFrame(animateRing);
+      updateText(seconds);
+    }
+
+    // Trigger pulse animation
+    window.triggerPulse = function(){
+      const circle = document.getElementById("circle");
+      if(!circle) return;
+      circle.classList.add("pulse");
+      setTimeout(()=>circle.classList.remove("pulse"),600);
+    }
+  </script>
+</body>
 </html>
